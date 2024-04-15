@@ -21,8 +21,11 @@ public class Document {
     private String type;
     private Date dateCreation;
 
-    @OneToMany
+    @OneToMany(mappedBy ="document")
     private List<MetaData> metadatas;
+
+    @OneToMany(mappedBy ="idDocument")
+    private List<Acces> acces;
 
 
 

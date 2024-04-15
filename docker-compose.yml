@@ -1,0 +1,11 @@
+version: '1'
+services:
+  db:
+    image: postgres
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_DB: upload_doc
+    ports:
+      - 5432:5432

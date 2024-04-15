@@ -12,16 +12,15 @@ import java.util.UUID;
 @Getter
 @Setter
 @Entity
-public class MetaData {
+public class Metadata {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    private String key;
+    private String cle;
 
-    private String value;
+    private String valeur;
 
     @ManyToOne
-
     private Document document;
 }

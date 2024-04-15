@@ -15,16 +15,16 @@ import java.util.*;
 public class Document {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-
     private UUID id;
+
     private String nom;
     private String type;
     private Date dateCreation;
 
-    @OneToMany(mappedBy ="document")
-    private List<MetaData> metadatas;
+    @OneToMany(mappedBy = "document")
+    private List<Metadata> metadatas;
 
-    @OneToMany(mappedBy ="idDocument")
+    @OneToMany(mappedBy = "idDocument")
     private List<Acces> acces;
 
 

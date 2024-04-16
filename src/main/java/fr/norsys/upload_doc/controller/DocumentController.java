@@ -1,6 +1,7 @@
 package fr.norsys.upload_doc.controller;
 
 import fr.norsys.upload_doc.dto.DocumentDetailsResponse;
+import fr.norsys.upload_doc.exception.MetadataNotFoundException;
 import fr.norsys.upload_doc.service.DocumentService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -41,8 +42,13 @@ public class DocumentController {
     }
 
     @GetMapping("/search/metadata")
-    public ResponseEntity<List<DocumentDetailsResponse>> searchDocumentsByMetaData(@RequestParam(required = false) Map<String, String> metadata) {
-        List<DocumentDetailsResponse> response = documentService.searchDocumentsByMetaData(metadata);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<?> searchDocumentsByMetaData(@RequestParam(required = false) Map<String, String> metadata) {
+        try {
+            List<DocumentDetailsResponse> response = documentService.searchDocumentsByMetaData(metadata);
+            return ResponseEntity.ok(response);
+        } catch (MetadataNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
+
     }
 }

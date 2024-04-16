@@ -4,6 +4,7 @@ import fr.norsys.upload_doc.dto.DocumentDetailsResponse;
 import fr.norsys.upload_doc.dto.MetadataResponse;
 import fr.norsys.upload_doc.entity.Document;
 import fr.norsys.upload_doc.entity.Metadata;
+import fr.norsys.upload_doc.exception.MetadataNotFoundException;
 import fr.norsys.upload_doc.repository.DocumentRepository;
 import fr.norsys.upload_doc.repository.MetadataRepository;
 import fr.norsys.upload_doc.service.DocumentService;
@@ -26,36 +27,32 @@ public class DocumentServiceImpl implements DocumentService {
     public DocumentDetailsResponse getDocumentByID(UUID id) {
         Document document = documentRepository.findById(id).orElseThrow(() -> new NoSuchElementException("No document with the specified id"));
 
-        Set<Metadata> metadataSet = metadataRepository.getMetadataByDocumentId(id);
-
-        Set<MetadataResponse> metadataResponses = metadataSet.stream().map(metadata -> new MetadataResponse(metadata.getCle(), metadata.getValeur())).collect(Collectors.toSet());
-
-        return new DocumentDetailsResponse(document.getNom(), document.getType(), document.getDateCreation(), metadataResponses);
+        return mapToDTOResponse(document);
     }
 
     @Override
     public List<DocumentDetailsResponse> searchDocuments(String nom, String type, LocalDate date) {
-        List<Document> document = documentRepository.searchDocuments(nom, type, date);
-        List<DocumentDetailsResponse> documentDetailsResponses = new ArrayList<>();
-        for (Document doc : document) {
-            Set<Metadata> metadataSet = metadataRepository.getMetadataByDocumentId(doc.getId());
-            Set<MetadataResponse> metadataResponses = metadataSet.stream().map(metadata -> new MetadataResponse(metadata.getCle(), metadata.getValeur())).collect(Collectors.toSet());
-            DocumentDetailsResponse documentDetailsResponse = new DocumentDetailsResponse(doc.getNom(), doc.getType(), doc.getDateCreation(), metadataResponses);
-            documentDetailsResponses.add(documentDetailsResponse);
-        }
-        return documentDetailsResponses;
+        List<Document> documents = documentRepository.searchDocuments(nom, type, date);
+        return documents.stream().map(this::mapToDTOResponse).collect(Collectors.toList());
     }
 
     @Override
-    public List<DocumentDetailsResponse> searchDocumentsByMetaData(Map<String, String> metadatas) {
-        List<Document> document = documentRepository.searchDocumentsByMetaData(metadatas);
-        List<DocumentDetailsResponse> documentDetailsResponses = new ArrayList<>();
-        for (Document doc : document) {
-            Set<Metadata> metadataSet = metadataRepository.getMetadataByDocumentId(doc.getId());
-            Set<MetadataResponse> metadataResponses = metadataSet.stream().map(metadata -> new MetadataResponse(metadata.getCle(), metadata.getValeur())).collect(Collectors.toSet());
-            DocumentDetailsResponse documentDetailsResponse = new DocumentDetailsResponse(doc.getNom(), doc.getType(), doc.getDateCreation(), metadataResponses);
-            documentDetailsResponses.add(documentDetailsResponse);
+    public List<DocumentDetailsResponse> searchDocumentsByMetaData(Map<String, String> metadataFilters) {
+        for (String key : metadataFilters.keySet()) {
+            boolean exists = metadataRepository.existsByCle(key);
+            if (!exists) {
+                throw new MetadataNotFoundException(key);
+            }
         }
+        List<Document> documents = documentRepository.searchDocumentsByMetaData(metadataFilters);
+        List<DocumentDetailsResponse> documentDetailsResponses = documents.stream().map(this::mapToDTOResponse).collect(Collectors.toList());
         return documentDetailsResponses;
+    }
+
+    private DocumentDetailsResponse mapToDTOResponse(Document document) {
+        Set<Metadata> metadataSet = metadataRepository.getMetadataByDocumentId(document.getId());
+        Set<MetadataResponse> metadataResponses = metadataSet.stream().map(metadata -> new MetadataResponse(metadata.getCle(), metadata.getValeur())).collect(Collectors.toSet());
+
+        return new DocumentDetailsResponse(document.getNom(), document.getType(), document.getDateCreation(), metadataResponses);
     }
 }

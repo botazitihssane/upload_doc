@@ -9,15 +9,16 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import fr.norsys.upload_doc.dto.DocumentDetailsResponse;
+import fr.norsys.upload_doc.exception.MetadataNotFoundException;
 import fr.norsys.upload_doc.service.DocumentService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
 
 import java.util.NoSuchElementException;
 import java.util.UUID;
@@ -49,6 +50,26 @@ public class DocumentController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+
+    @GetMapping("/search")
+    public ResponseEntity<List<DocumentDetailsResponse>> searchDocuments(@RequestParam(required = false, defaultValue = "") String nom,
+                                                                         @RequestParam(required = false, defaultValue = "") String type,
+                                                                         @RequestParam(required = false) LocalDate date) {
+        List<DocumentDetailsResponse> response = documentService.searchDocuments(nom, type, date);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/search/metadata")
+    public ResponseEntity<?> searchDocumentsByMetaData(@RequestParam(required = false) Map<String, String> metadata) {
+        try {
+            List<DocumentDetailsResponse> response = documentService.searchDocumentsByMetaData(metadata);
+            return ResponseEntity.ok(response);
+        } catch (MetadataNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
+
     }
 
 }

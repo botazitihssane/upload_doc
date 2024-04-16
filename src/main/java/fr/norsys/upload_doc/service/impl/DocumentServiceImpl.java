@@ -1,5 +1,6 @@
 package fr.norsys.upload_doc.service.impl;
 
+
 import com.google.auth.Credentials;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.storage.BlobId;
@@ -14,6 +15,16 @@ import fr.norsys.upload_doc.service.DocumentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+
+import fr.norsys.upload_doc.dto.DocumentDetailsResponse;
+import fr.norsys.upload_doc.dto.MetadataResponse;
+import fr.norsys.upload_doc.entity.Document;
+import fr.norsys.upload_doc.entity.Metadata;
+import fr.norsys.upload_doc.repository.DocumentRepository;
+import fr.norsys.upload_doc.repository.MetadataRepository;
+import fr.norsys.upload_doc.service.DocumentService;
+import lombok.AllArgsConstructor;
+
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -30,8 +41,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
 @Service
+@AllArgsConstructor
 public class DocumentServiceImpl implements DocumentService {
+
    @Autowired
     private DocumentRepository documentRepository;
     @Autowired
@@ -145,5 +163,28 @@ public class DocumentServiceImpl implements DocumentService {
 
 
 
+
+
+
+    private final DocumentRepository documentRepository;
+
+    private final MetadataRepository metadataRepository;
+
+    @Override
+    public DocumentDetailsResponse getDocumentByID(UUID id) {
+        Document document = documentRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("No document with the specified id"));
+
+        Set<Metadata> metadataSet = metadataRepository.getMetadataByDocumentId(id);
+        if (metadataSet.isEmpty()) {
+            throw new NoSuchElementException("No metadata found for the document with the specified id");
+        }
+
+        Set<MetadataResponse> metadataResponses = metadataSet.stream()
+                .map(metadata -> new MetadataResponse(metadata.getCle(), metadata.getValeur()))
+                .collect(Collectors.toSet());
+
+        return new DocumentDetailsResponse(document.getNom(), document.getType(), document.getDateCreation(), metadataResponses);
+    }
 
 }

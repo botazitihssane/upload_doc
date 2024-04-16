@@ -21,10 +21,14 @@ public class Document {
     private String nom;
     private String type;
     private LocalDate dateCreation;
+
    private String emplacement;
    private String hash;
+
+
+
     @OneToMany(mappedBy = "document")
-    private List<Metadata> metadatas;
+    private Set<Metadata> metadatas;
 
     @OneToMany(mappedBy = "idDocument")
     private List<Acces> acces;

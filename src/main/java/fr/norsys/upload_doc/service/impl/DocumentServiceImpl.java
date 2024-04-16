@@ -7,15 +7,6 @@ import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
-import fr.norsys.upload_doc.entity.Document;
-import fr.norsys.upload_doc.entity.Metadata;
-import fr.norsys.upload_doc.repository.DocumentRepository;
-import fr.norsys.upload_doc.repository.MetaDataRepository;
-import fr.norsys.upload_doc.service.DocumentService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-
 import fr.norsys.upload_doc.dto.DocumentDetailsResponse;
 import fr.norsys.upload_doc.dto.MetadataResponse;
 import fr.norsys.upload_doc.entity.Document;
@@ -25,23 +16,21 @@ import fr.norsys.upload_doc.repository.DocumentRepository;
 import fr.norsys.upload_doc.repository.MetadataRepository;
 import fr.norsys.upload_doc.service.DocumentService;
 import lombok.AllArgsConstructor;
-
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.*;
-import java.math.BigInteger;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -50,10 +39,12 @@ import java.util.stream.Collectors;
 @AllArgsConstructor
 public class DocumentServiceImpl implements DocumentService {
 
-   @Autowired
+    @Autowired
     private DocumentRepository documentRepository;
     @Autowired
-    private MetaDataRepository metaDataRepository;
+    private MetadataRepository metaDataRepository;
+
+    private final MetadataRepository metadataRepository;
 
     private String uploadFile(File file, String fileName) throws IOException {
         String contentType = getContentType(fileName);
@@ -68,9 +59,11 @@ public class DocumentServiceImpl implements DocumentService {
         String DOWNLOAD_URL = "https://firebasestorage.googleapis.com/v0/b/uploaddoc-a26b9.appspot.com/o/%s?alt=media";
         return String.format(DOWNLOAD_URL, URLEncoder.encode(fileName, StandardCharsets.UTF_8));
     }
+
     private String getExtension(String fileName) {
         return fileName.substring(fileName.lastIndexOf("."));
     }
+
     private File convertToFile(MultipartFile multipartFile, String fileName) throws IOException {
         File tempFile = new File(fileName);
         try (FileOutputStream fos = new FileOutputStream(tempFile)) {
@@ -79,6 +72,7 @@ public class DocumentServiceImpl implements DocumentService {
         }
         return tempFile;
     }
+
     private String getContentType(String fileName) {
 
         String extension = getExtension(fileName).toLowerCase();
@@ -99,22 +93,21 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     @Override
-    public ResponseEntity<?> save(Document document, MultipartFile multipartFile)  {
+    public ResponseEntity<?> save(Document document, MultipartFile multipartFile) {
 
         try {
 
             String fileHash = calculateHash(multipartFile);
-            System.out.println("file hash"+ fileHash);
+            System.out.println("file hash" + fileHash);
 
-          for (Document existingDocument : documentRepository.findAll()) {
-              String existingFileHash = existingDocument.getHash();
-                System.out.println("existing file hash"+ existingFileHash);
+            for (Document existingDocument : documentRepository.findAll()) {
+                String existingFileHash = existingDocument.getHash();
+                System.out.println("existing file hash" + existingFileHash);
 
                 if (existingFileHash.equals(fileHash)) {
                     return ResponseEntity.status(HttpStatus.OK).body("File already exists. URL: " + existingDocument.getEmplacement());
                 }
             }
-
 
 
             String fileName = multipartFile.getOriginalFilename();
@@ -124,9 +117,9 @@ public class DocumentServiceImpl implements DocumentService {
             file.delete();
 
 
-             document.setEmplacement(URL);
-             document.setHash(fileHash);
-             documentRepository.save(document);
+            document.setEmplacement(URL);
+            document.setHash(fileHash);
+            documentRepository.save(document);
 
 
             for (Metadata meta : document.getMetadatas()) {
@@ -139,12 +132,13 @@ public class DocumentServiceImpl implements DocumentService {
             }
             return ResponseEntity.status(HttpStatus.CREATED).body("Document saved successfully. URL: " + document.getEmplacement());
 
-        }catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred while saving the document.");
 
         }
     }
+
     private String calculateHash(MultipartFile file) {
 
         try {
@@ -160,15 +154,6 @@ public class DocumentServiceImpl implements DocumentService {
             return null;
         }
     }
-
-
-
-
-
-
-    private final DocumentRepository documentRepository;
-
-    private final MetadataRepository metadataRepository;
 
     @Override
     public DocumentDetailsResponse getDocumentByID(UUID id) {

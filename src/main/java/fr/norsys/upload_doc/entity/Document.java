@@ -7,7 +7,11 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
-import java.util.*;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
@@ -22,9 +26,8 @@ public class Document {
     private String type;
     private LocalDate dateCreation;
 
-   private String emplacement;
-   private String hash;
-
+    private String emplacement;
+    private String hash;
 
 
     @OneToMany(mappedBy = "document")
@@ -32,7 +35,6 @@ public class Document {
 
     @OneToMany(mappedBy = "idDocument")
     private List<Acces> acces;
-
 
 
     @Override
@@ -47,7 +49,6 @@ public class Document {
     public int hashCode() {
         return Objects.hash(nom, type, dateCreation, metadatas);
     }
-
 
 
 }

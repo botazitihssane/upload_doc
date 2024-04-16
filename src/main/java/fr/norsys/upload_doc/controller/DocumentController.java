@@ -1,25 +1,21 @@
 package fr.norsys.upload_doc.controller;
 
 
+import fr.norsys.upload_doc.dto.DocumentDetailsResponse;
 import fr.norsys.upload_doc.entity.Document;
+import fr.norsys.upload_doc.exception.MetadataNotFoundException;
+import fr.norsys.upload_doc.service.DocumentService;
 import fr.norsys.upload_doc.service.impl.DocumentServiceImpl;
+import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import fr.norsys.upload_doc.dto.DocumentDetailsResponse;
-import fr.norsys.upload_doc.exception.MetadataNotFoundException;
-import fr.norsys.upload_doc.service.DocumentService;
-import lombok.AllArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
-
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
@@ -30,15 +26,13 @@ public class DocumentController {
 
     @Autowired
     private DocumentServiceImpl documentServiceImpl;
+
+    private final DocumentService documentService;
+
     @PostMapping("/save")
     public ResponseEntity<?> saveDocument(@ModelAttribute Document document, @RequestParam("file") MultipartFile multipartFile) {
         return documentServiceImpl.save(document, multipartFile);
     }
-
-
-
-
-    private final DocumentService documentService;
 
     @GetMapping("/{id}")
     public ResponseEntity<DocumentDetailsResponse> getDocumentByUUID(@PathVariable UUID id) {
@@ -51,7 +45,6 @@ public class DocumentController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
-
 
     @GetMapping("/search")
     public ResponseEntity<List<DocumentDetailsResponse>> searchDocuments(@RequestParam(required = false, defaultValue = "") String nom,

@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.util.*;
 @NoArgsConstructor
 @AllArgsConstructor
@@ -19,8 +20,9 @@ public class Document {
 
     private String nom;
     private String type;
-    private Date dateCreation;
-
+    private LocalDate dateCreation;
+   private String emplacement;
+   private String hash;
     @OneToMany(mappedBy = "document")
     private List<Metadata> metadatas;
 

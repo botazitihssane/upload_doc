@@ -22,6 +22,11 @@ public class Document {
     private String type;
     private LocalDate dateCreation;
 
+   private String emplacement;
+   private String hash;
+
+
+
     @OneToMany(mappedBy = "document")
     private Set<Metadata> metadatas;
 

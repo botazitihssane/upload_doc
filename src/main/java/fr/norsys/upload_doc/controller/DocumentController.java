@@ -1,5 +1,13 @@
 package fr.norsys.upload_doc.controller;
 
+
+import fr.norsys.upload_doc.entity.Document;
+import fr.norsys.upload_doc.service.impl.DocumentServiceImpl;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
 import fr.norsys.upload_doc.dto.DocumentDetailsResponse;
 import fr.norsys.upload_doc.exception.MetadataNotFoundException;
 import fr.norsys.upload_doc.service.DocumentService;
@@ -11,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
@@ -18,6 +27,16 @@ import java.util.UUID;
 @RequestMapping("api/document")
 @AllArgsConstructor
 public class DocumentController {
+
+    @Autowired
+    private DocumentServiceImpl documentServiceImpl;
+    @PostMapping("/save")
+    public ResponseEntity<?> saveDocument(@ModelAttribute Document document, @RequestParam("file") MultipartFile multipartFile) {
+        return documentServiceImpl.save(document, multipartFile);
+    }
+
+
+
 
     private final DocumentService documentService;
 
@@ -32,6 +51,7 @@ public class DocumentController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
 
     @GetMapping("/search")
     public ResponseEntity<List<DocumentDetailsResponse>> searchDocuments(@RequestParam(required = false, defaultValue = "") String nom,
@@ -51,4 +71,5 @@ public class DocumentController {
         }
 
     }
+
 }

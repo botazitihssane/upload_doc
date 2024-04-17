@@ -19,5 +19,6 @@ public interface DocumentService {
     public List<DocumentDetailsResponse> searchDocuments(String nom, String type, LocalDate date);
 
     public List<DocumentDetailsResponse> searchDocumentsByMetaData(Map<String, String> metadatas);
+    void deleteById(UUID id);
 
 }

@@ -181,6 +181,41 @@ public class DocumentServiceImpl implements DocumentService {
         return documentDetailsResponses;
     }
 
+    @Override
+    public void deleteById(UUID id) {
+        Optional<Document> optionalDocument = documentRepository.findById(id);
+        if (optionalDocument.isPresent()) {
+            Document document = optionalDocument.get();
+            String url = document.getEmplacement();
+
+            // Extract bucket name and file path from the URL
+            String[] parts = url.split("/");
+            String bucketName = parts[2].split("\\.")[0];
+            String filePath = url.substring(url.indexOf(bucketName) + bucketName.length() + 1);
+
+            // Delete the file from Firebase Storage
+            deleteFileFromFirebaseStorage(bucketName, filePath);
+            metadataRepository.deleteByDocumentId(id);
+            documentRepository.deleteById(id);
+        }
+
+    }
+
+
+    private void deleteFileFromFirebaseStorage(String bucketName, String filePath) {
+        try {
+            BlobId blobId = BlobId.of(bucketName, filePath);
+            InputStream inputStream = DocumentService.class.getClassLoader().getResourceAsStream("firebase-private-key.json");
+            GoogleCredentials credentials = GoogleCredentials.fromStream(inputStream);
+            Storage storage = StorageOptions.newBuilder().setCredentials(credentials).build().getService();
+            storage.delete(blobId);
+            System.out.println("File deleted successfully from Firebase Storage.");
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.err.println("Error deleting file from Firebase Storage: " + e.getMessage());
+        }
+    }
+
     private DocumentDetailsResponse mapToDTOResponse(Document document) {
         Set<Metadata> metadataSet = metadataRepository.getMetadataByDocumentId(document.getId());
         Set<MetadataResponse> metadataResponses = metadataSet.stream().map(metadata -> new MetadataResponse(metadata.getCle(), metadata.getValeur())).collect(Collectors.toSet());

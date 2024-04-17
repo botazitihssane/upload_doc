@@ -2,7 +2,7 @@ package fr.norsys.upload_doc.service;
 
 
 import fr.norsys.upload_doc.dto.DocumentDetailsResponse;
-import fr.norsys.upload_doc.entity.Document;
+import fr.norsys.upload_doc.dto.DocumentSaveRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.UUID;
 
 public interface DocumentService {
-    ResponseEntity<?> save(Document document, MultipartFile multipartFile);
+    ResponseEntity<?> save(DocumentSaveRequest documentSaveRequest, MultipartFile multipartFile);
 
     public DocumentDetailsResponse getDocumentByID(UUID id);
 

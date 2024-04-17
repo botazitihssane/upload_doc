@@ -2,7 +2,7 @@ package fr.norsys.upload_doc.controller;
 
 
 import fr.norsys.upload_doc.dto.DocumentDetailsResponse;
-import fr.norsys.upload_doc.entity.Document;
+import fr.norsys.upload_doc.dto.DocumentSaveRequest;
 import fr.norsys.upload_doc.exception.MetadataNotFoundException;
 import fr.norsys.upload_doc.service.DocumentService;
 import fr.norsys.upload_doc.service.impl.DocumentServiceImpl;
@@ -21,6 +21,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("api/document")
+@CrossOrigin(origins = "http://localhost:3000")
 @AllArgsConstructor
 public class DocumentController {
 
@@ -30,8 +31,9 @@ public class DocumentController {
     private final DocumentService documentService;
 
     @PostMapping("/save")
-    public ResponseEntity<?> saveDocument(@ModelAttribute Document document, @RequestParam("file") MultipartFile multipartFile) {
-        return documentServiceImpl.save(document, multipartFile);
+    public ResponseEntity<?> saveDocument(@ModelAttribute DocumentSaveRequest documentSaveRequest, @RequestParam("file") MultipartFile multipartFile) {
+        System.out.println("document" + documentSaveRequest);
+        return documentServiceImpl.save(documentSaveRequest, multipartFile);
     }
 
     @GetMapping("/{id}")

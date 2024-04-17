@@ -13,4 +13,5 @@ public interface MetadataRepository extends JpaRepository<Metadata, UUID> {
     Set<Metadata> getMetadataByDocumentId(UUID id);
 
     boolean existsByCle(String cle);
+    void deleteByDocumentId(UUID id);
 }

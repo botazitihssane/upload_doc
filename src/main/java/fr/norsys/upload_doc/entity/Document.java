@@ -7,10 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -31,7 +28,8 @@ public class Document {
 
 
     @OneToMany(mappedBy = "document")
-    private Set<Metadata> metadatas;
+    private Set<Metadata> metadatas ;
+
 
     @OneToMany(mappedBy = "idDocument")
     private List<Acces> acces;

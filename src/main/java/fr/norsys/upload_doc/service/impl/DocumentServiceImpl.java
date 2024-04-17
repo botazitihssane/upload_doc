@@ -3,16 +3,17 @@ package fr.norsys.upload_doc.service.impl;
 
 import com.google.auth.Credentials;
 import com.google.auth.oauth2.GoogleCredentials;
-import com.google.cloud.storage.BlobId;
-import com.google.cloud.storage.BlobInfo;
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageOptions;
+import com.google.cloud.storage.*;
+import fr.norsys.upload_doc.dto.DocumentSaveRequest;
+import fr.norsys.upload_doc.dto.DocumentSaveResponse;
 import fr.norsys.upload_doc.entity.Document;
 import fr.norsys.upload_doc.entity.Metadata;
 import fr.norsys.upload_doc.repository.DocumentRepository;
 
 import fr.norsys.upload_doc.service.DocumentService;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -49,15 +50,17 @@ import java.util.Set;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
-
+import org.springframework.core.io.Resource;
 @Service
-@AllArgsConstructor
+
 public class DocumentServiceImpl implements DocumentService {
 
     @Autowired
     private DocumentRepository documentRepository;
+   @Autowired
+    private  MetadataRepository metadataRepository;
 
-    private final MetadataRepository metadataRepository;
+
 
     private String uploadFile(File file, String fileName) throws IOException {
         String contentType = getContentType(fileName);
@@ -177,6 +180,12 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     @Override
+    public void deleteById(UUID id) {
+      documentRepository.deleteById(id);
+    }
+
+
+    @Override
     public List<DocumentDetailsResponse> searchDocuments(String nom, String type, LocalDate date) {
         List<Document> documents = documentRepository.searchDocuments(nom, type, date);
         return documents.stream().map(this::mapToDTOResponse).collect(Collectors.toList());
@@ -201,5 +210,8 @@ public class DocumentServiceImpl implements DocumentService {
 
         return new DocumentDetailsResponse(document.getNom(), document.getType(), document.getDateCreation(), metadataResponses);
     }
+
+
+
 
 }

@@ -18,14 +18,26 @@ import org.springframework.http.ResponseEntity;
 
 import fr.norsys.upload_doc.dto.DocumentDetailsResponse;
 import fr.norsys.upload_doc.dto.MetadataResponse;
+import fr.norsys.upload_doc.entity.Document;
+import fr.norsys.upload_doc.entity.Metadata;
+import fr.norsys.upload_doc.exception.MetadataNotFoundException;
+import fr.norsys.upload_doc.repository.DocumentRepository;
 
 import fr.norsys.upload_doc.repository.MetadataRepository;
 
 import lombok.AllArgsConstructor;
-
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+
 import java.io.*;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -34,16 +46,18 @@ import java.security.NoSuchAlgorithmException;
 import java.util.UUID;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.time.LocalDate;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @AllArgsConstructor
 public class DocumentServiceImpl implements DocumentService {
 
-   @Autowired
-    private DocumentRepository documentRepository;
     @Autowired
-    private MetadataRepository metadataRepository;
+    private DocumentRepository documentRepository;
+
+    private final MetadataRepository metadataRepository;
 
     private String uploadFile(File file, String fileName) throws IOException {
         String contentType = getContentType(fileName);
@@ -58,9 +72,11 @@ public class DocumentServiceImpl implements DocumentService {
         String DOWNLOAD_URL = "https://firebasestorage.googleapis.com/v0/b/uploaddoc-a26b9.appspot.com/o/%s?alt=media";
         return String.format(DOWNLOAD_URL, URLEncoder.encode(fileName, StandardCharsets.UTF_8));
     }
+
     private String getExtension(String fileName) {
         return fileName.substring(fileName.lastIndexOf("."));
     }
+
     private File convertToFile(MultipartFile multipartFile, String fileName) throws IOException {
         File tempFile = new File(fileName);
         try (FileOutputStream fos = new FileOutputStream(tempFile)) {
@@ -69,6 +85,7 @@ public class DocumentServiceImpl implements DocumentService {
         }
         return tempFile;
     }
+
     private String getContentType(String fileName) {
 
         String extension = getExtension(fileName).toLowerCase();
@@ -89,22 +106,21 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     @Override
-    public ResponseEntity<?> save(Document document, MultipartFile multipartFile)  {
+    public ResponseEntity<?> save(Document document, MultipartFile multipartFile) {
 
         try {
 
             String fileHash = calculateHash(multipartFile);
-            System.out.println("file hash"+ fileHash);
+            System.out.println("file hash" + fileHash);
 
-          for (Document existingDocument : documentRepository.findAll()) {
-              String existingFileHash = existingDocument.getHash();
-                System.out.println("existing file hash"+ existingFileHash);
+            for (Document existingDocument : documentRepository.findAll()) {
+                String existingFileHash = existingDocument.getHash();
+                System.out.println("existing file hash" + existingFileHash);
 
                 if (existingFileHash.equals(fileHash)) {
                     return ResponseEntity.status(HttpStatus.OK).body("File already exists. URL: " + existingDocument.getEmplacement());
                 }
             }
-
 
 
             String fileName = multipartFile.getOriginalFilename();
@@ -114,9 +130,9 @@ public class DocumentServiceImpl implements DocumentService {
             file.delete();
 
 
-             document.setEmplacement(URL);
-             document.setHash(fileHash);
-             documentRepository.save(document);
+            document.setEmplacement(URL);
+            document.setHash(fileHash);
+            documentRepository.save(document);
 
 
             for (Metadata meta : document.getMetadatas()) {
@@ -129,12 +145,13 @@ public class DocumentServiceImpl implements DocumentService {
             }
             return ResponseEntity.status(HttpStatus.CREATED).body("Document saved successfully. URL: " + document.getEmplacement());
 
-        }catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred while saving the document.");
 
         }
     }
+
     private String calculateHash(MultipartFile file) {
 
         try {
@@ -152,25 +169,35 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
 
-
-
-
-
-
-
     @Override
     public DocumentDetailsResponse getDocumentByID(UUID id) {
-        Document document = documentRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("No document with the specified id"));
+        Document document = documentRepository.findById(id).orElseThrow(() -> new NoSuchElementException("No document with the specified id"));
 
-        Set<Metadata> metadataSet = metadataRepository.getMetadataByDocumentId(id);
-        if (metadataSet.isEmpty()) {
-            throw new NoSuchElementException("No metadata found for the document with the specified id");
+        return mapToDTOResponse(document);
+    }
+
+    @Override
+    public List<DocumentDetailsResponse> searchDocuments(String nom, String type, LocalDate date) {
+        List<Document> documents = documentRepository.searchDocuments(nom, type, date);
+        return documents.stream().map(this::mapToDTOResponse).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<DocumentDetailsResponse> searchDocumentsByMetaData(Map<String, String> metadataFilters) {
+        for (String key : metadataFilters.keySet()) {
+            boolean exists = metadataRepository.existsByCle(key);
+            if (!exists) {
+                throw new MetadataNotFoundException(key);
+            }
         }
+        List<Document> documents = documentRepository.searchDocumentsByMetaData(metadataFilters);
+        List<DocumentDetailsResponse> documentDetailsResponses = documents.stream().map(this::mapToDTOResponse).collect(Collectors.toList());
+        return documentDetailsResponses;
+    }
 
-        Set<MetadataResponse> metadataResponses = metadataSet.stream()
-                .map(metadata -> new MetadataResponse(metadata.getCle(), metadata.getValeur()))
-                .collect(Collectors.toSet());
+    private DocumentDetailsResponse mapToDTOResponse(Document document) {
+        Set<Metadata> metadataSet = metadataRepository.getMetadataByDocumentId(document.getId());
+        Set<MetadataResponse> metadataResponses = metadataSet.stream().map(metadata -> new MetadataResponse(metadata.getCle(), metadata.getValeur())).collect(Collectors.toSet());
 
         return new DocumentDetailsResponse(document.getNom(), document.getType(), document.getDateCreation(), metadataResponses);
     }

@@ -212,6 +212,44 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
 
+    public Resource downloadDocumentById(UUID documentId) {
+        try {
+            // Supposons que vous avez une méthode dans votre service ou votre repository pour récupérer l'URL du document par son ID
+            Optional<Document> documentFounded = documentRepository.findById(documentId);
+            if(documentFounded.isPresent()){
+                Document document=documentFounded.get();
+                String documentUrl=document.getEmplacement();
+                if (documentUrl != null && !documentUrl.isEmpty()) {
+                    // Initialisez Firebase Storage avec vos informations d'authentification
+                    GoogleCredentials credentials = GoogleCredentials.fromStream(
+                            getClass().getClassLoader().getResourceAsStream("uploaddoc-firebase-adminsdk.json"));
+                    Storage storage = StorageOptions.newBuilder().setCredentials(credentials).build().getService();
 
+                    // Récupérez le nom du fichier à partir de l'URL (s'il est stocké dans l'URL)
+                    String fileName = documentUrl.substring(documentUrl.lastIndexOf("/") + 1);
+
+                    // Récupérez le blob (fichier) depuis Firebase Storage
+                    Blob blob = storage.get("uploaddoc-a26b9.appspot.com", fileName);
+
+                    // Si le blob (fichier) existe
+                    if (blob != null) {
+                        // Téléchargez le contenu du blob dans un tableau de bytes
+                        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                        blob.downloadTo(outputStream);
+
+                        // Retournez le contenu du fichier sous forme de Resource
+                        return new ByteArrayResource(outputStream.toByteArray());
+                    }
+                }
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            // Gérez l'exception et renvoyez null ou une Resource vide en cas d'erreur
+        }
+
+        // Si le document n'existe pas ou s'il y a une erreur, renvoyez null ou une Resource vide
+        return null;
+    }
 
 }

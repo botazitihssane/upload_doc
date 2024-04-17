@@ -77,6 +77,9 @@ public class DocumentController {
 
 
     }
-
+    @GetMapping("/down/{documentId}")
+    public Resource downloadDocumentById(@PathVariable UUID documentId) {
+        return documentServiceImpl.downloadDocumentById(documentId);
+    }
 
 }

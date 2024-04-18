@@ -4,36 +4,24 @@ package fr.norsys.upload_doc.service.impl;
 import com.google.auth.Credentials;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.storage.*;
-import fr.norsys.upload_doc.dto.DocumentSaveRequest;
-import fr.norsys.upload_doc.dto.DocumentSaveResponse;
-import fr.norsys.upload_doc.entity.Document;
-import fr.norsys.upload_doc.entity.Metadata;
-import fr.norsys.upload_doc.repository.DocumentRepository;
-
-import fr.norsys.upload_doc.service.DocumentService;
-import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.*;
-
 import fr.norsys.upload_doc.dto.DocumentDetailsResponse;
+import fr.norsys.upload_doc.dto.DocumentSaveRequest;
 import fr.norsys.upload_doc.dto.MetadataResponse;
 import fr.norsys.upload_doc.entity.Document;
 import fr.norsys.upload_doc.entity.Metadata;
 import fr.norsys.upload_doc.exception.MetadataNotFoundException;
 import fr.norsys.upload_doc.repository.DocumentRepository;
-
 import fr.norsys.upload_doc.repository.MetadataRepository;
-
-import lombok.AllArgsConstructor;
+import fr.norsys.upload_doc.service.DocumentService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.io.*;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -46,22 +34,18 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.UUID;
-import java.util.NoSuchElementException;
-import java.util.Set;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
-import org.springframework.core.io.Resource;
+
 @Service
 
 public class DocumentServiceImpl implements DocumentService {
 
     @Autowired
     private DocumentRepository documentRepository;
-   @Autowired
-    private  MetadataRepository metadataRepository;
-
+    @Autowired
+    private MetadataRepository metadataRepository;
 
 
     private String uploadFile(File file, String fileName) throws IOException {
@@ -111,10 +95,8 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     @Override
-    public ResponseEntity<?> save(Document document, MultipartFile multipartFile) {
-
+    public ResponseEntity<?> save(DocumentSaveRequest documentSaveRequest, MultipartFile multipartFile) {
         try {
-
             String fileHash = calculateHash(multipartFile);
             System.out.println("file hash" + fileHash);
 
@@ -127,27 +109,23 @@ public class DocumentServiceImpl implements DocumentService {
                 }
             }
 
-
             String fileName = multipartFile.getOriginalFilename();
             fileName = UUID.randomUUID().toString().concat(this.getExtension(fileName));
             File file = this.convertToFile(multipartFile, fileName);
             String URL = this.uploadFile(file, fileName);
             file.delete();
 
-
+            Document document = new Document();
+            document.setNom(documentSaveRequest.nom());
+            document.setType(documentSaveRequest.type());
+            document.setDateCreation(documentSaveRequest.dateCreation());
             document.setEmplacement(URL);
             document.setHash(fileHash);
+
             documentRepository.save(document);
 
-
-            for (Metadata meta : document.getMetadatas()) {
-
-                meta.setCle(meta.getCle());
-                meta.setValeur(meta.getValeur());
-                meta.setDocument(document);
-
-                metadataRepository.save(meta);
-            }
+            Set<Metadata> metadataSet = createMetadataSet(documentSaveRequest.metadata(), document);
+            metadataRepository.saveAll(metadataSet);
             return ResponseEntity.status(HttpStatus.CREATED).body("Document saved successfully. URL: " + document.getEmplacement());
 
         } catch (Exception e) {
@@ -155,6 +133,23 @@ public class DocumentServiceImpl implements DocumentService {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred while saving the document.");
 
         }
+    }
+
+    public Set<Metadata> createMetadataSet(Map<String, String> metadataMap, Document document) {
+        System.out.println(metadataMap);
+        Set<Metadata> metadataSet = new HashSet<>();
+
+        if (metadataMap != null) {
+            for (Map.Entry<String, String> entry : metadataMap.entrySet()) {
+                Metadata metadata = new Metadata();
+                metadata.setCle(entry.getKey());
+                metadata.setValeur(entry.getValue());
+                metadata.setDocument(document);
+                metadataSet.add(metadata);
+            }
+        }
+
+        return metadataSet;
     }
 
     private String calculateHash(MultipartFile file) {
@@ -183,7 +178,7 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     public void deleteById(UUID id) {
-      documentRepository.deleteById(id);
+        documentRepository.deleteById(id);
     }
 
 
@@ -205,6 +200,7 @@ public class DocumentServiceImpl implements DocumentService {
         List<DocumentDetailsResponse> documentDetailsResponses = documents.stream().map(this::mapToDTOResponse).collect(Collectors.toList());
         return documentDetailsResponses;
     }
+
 
     private DocumentDetailsResponse mapToDTOResponse(Document document) {
         Set<Metadata> metadataSet = metadataRepository.getMetadataByDocumentId(document.getId());

@@ -1,0 +1,3 @@
+ALTER TABLE acces
+DROP
+COLUMN droits;

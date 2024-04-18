@@ -119,7 +119,7 @@ public class DocumentServiceImpl implements DocumentService {
                 System.out.println("existing file hash" + existingFileHash);
 
                 if (existingFileHash.equals(fileHash)) {
-                    return ResponseEntity.status(HttpStatus.OK).body("File already exists. URL: " + existingDocument.getEmplacement());
+                    return ResponseEntity.status(HttpStatus.CONFLICT).body("File already exists. URL: " + existingDocument.getEmplacement());
                 }
             }
 

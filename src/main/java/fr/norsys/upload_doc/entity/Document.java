@@ -31,7 +31,8 @@ public class Document {
 
 
     @OneToMany(mappedBy = "document")
-    private Set<Metadata> metadatas;
+    private Set<Metadata> metadatas ;
+
 
     @OneToMany(mappedBy = "idDocument")
     private List<Acces> acces;

@@ -8,6 +8,7 @@ import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import fr.norsys.upload_doc.dto.DocumentDetailsResponse;
+import fr.norsys.upload_doc.dto.DocumentSaveRequest;
 import fr.norsys.upload_doc.dto.MetadataResponse;
 import fr.norsys.upload_doc.entity.Document;
 import fr.norsys.upload_doc.entity.Metadata;
@@ -15,7 +16,6 @@ import fr.norsys.upload_doc.exception.MetadataNotFoundException;
 import fr.norsys.upload_doc.repository.DocumentRepository;
 import fr.norsys.upload_doc.repository.MetadataRepository;
 import fr.norsys.upload_doc.service.DocumentService;
-import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,15 +36,14 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-@AllArgsConstructor
+
 public class DocumentServiceImpl implements DocumentService {
 
     @Autowired
     private DocumentRepository documentRepository;
     @Autowired
-    private MetadataRepository metaDataRepository;
+    private MetadataRepository metadataRepository;
 
-    private final MetadataRepository metadataRepository;
 
     private String uploadFile(File file, String fileName) throws IOException {
         String contentType = getContentType(fileName);
@@ -88,15 +87,13 @@ public class DocumentServiceImpl implements DocumentService {
             case ".txt":
                 return "text/plain";
             default:
-                return "application/octet-stream"; // fallback to binary data
+                return "application/octet-stream";
         }
     }
 
     @Override
-    public ResponseEntity<?> save(Document document, MultipartFile multipartFile) {
-
+    public ResponseEntity<?> save(DocumentSaveRequest documentSaveRequest, MultipartFile multipartFile) {
         try {
-
             String fileHash = calculateHash(multipartFile);
             System.out.println("file hash" + fileHash);
 
@@ -109,27 +106,23 @@ public class DocumentServiceImpl implements DocumentService {
                 }
             }
 
-
             String fileName = multipartFile.getOriginalFilename();
             fileName = UUID.randomUUID().toString().concat(this.getExtension(fileName));
             File file = this.convertToFile(multipartFile, fileName);
             String URL = this.uploadFile(file, fileName);
             file.delete();
 
-
+            Document document = new Document();
+            document.setNom(documentSaveRequest.nom());
+            document.setType(documentSaveRequest.type());
+            document.setDateCreation(documentSaveRequest.dateCreation());
             document.setEmplacement(URL);
             document.setHash(fileHash);
+
             documentRepository.save(document);
 
-
-            for (Metadata meta : document.getMetadatas()) {
-
-                meta.setCle(meta.getCle());
-                meta.setValeur(meta.getValeur());
-                meta.setDocument(document);
-
-                metaDataRepository.save(meta);
-            }
+            Set<Metadata> metadataSet = createMetadataSet(documentSaveRequest.metadata(), document);
+            metadataRepository.saveAll(metadataSet);
             return ResponseEntity.status(HttpStatus.CREATED).body("Document saved successfully. URL: " + document.getEmplacement());
 
         } catch (Exception e) {
@@ -137,6 +130,23 @@ public class DocumentServiceImpl implements DocumentService {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred while saving the document.");
 
         }
+    }
+
+    public Set<Metadata> createMetadataSet(Map<String, String> metadataMap, Document document) {
+        System.out.println(metadataMap);
+        Set<Metadata> metadataSet = new HashSet<>();
+
+        if (metadataMap != null) {
+            for (Map.Entry<String, String> entry : metadataMap.entrySet()) {
+                Metadata metadata = new Metadata();
+                metadata.setCle(entry.getKey());
+                metadata.setValeur(entry.getValue());
+                metadata.setDocument(document);
+                metadataSet.add(metadata);
+            }
+        }
+
+        return metadataSet;
     }
 
     private String calculateHash(MultipartFile file) {
@@ -155,12 +165,19 @@ public class DocumentServiceImpl implements DocumentService {
         }
     }
 
+
     @Override
     public DocumentDetailsResponse getDocumentByID(UUID id) {
         Document document = documentRepository.findById(id).orElseThrow(() -> new NoSuchElementException("No document with the specified id"));
 
         return mapToDTOResponse(document);
     }
+
+    @Override
+    public void deleteById(UUID id) {
+        documentRepository.deleteById(id);
+    }
+
 
     @Override
     public List<DocumentDetailsResponse> searchDocuments(String nom, String type, LocalDate date) {
@@ -181,46 +198,13 @@ public class DocumentServiceImpl implements DocumentService {
         return documentDetailsResponses;
     }
 
-    @Override
-    public void deleteById(UUID id) {
-        Optional<Document> optionalDocument = documentRepository.findById(id);
-        if (optionalDocument.isPresent()) {
-            Document document = optionalDocument.get();
-            String url = document.getEmplacement();
-
-            // Extract bucket name and file path from the URL
-            String[] parts = url.split("/");
-            String bucketName = parts[2].split("\\.")[0];
-            String filePath = url.substring(url.indexOf(bucketName) + bucketName.length() + 1);
-
-            // Delete the file from Firebase Storage
-            deleteFileFromFirebaseStorage(bucketName, filePath);
-            metadataRepository.deleteByDocumentId(id);
-            documentRepository.deleteById(id);
-        }
-
-    }
-
-
-    private void deleteFileFromFirebaseStorage(String bucketName, String filePath) {
-        try {
-            BlobId blobId = BlobId.of(bucketName, filePath);
-            InputStream inputStream = DocumentService.class.getClassLoader().getResourceAsStream("firebase-private-key.json");
-            GoogleCredentials credentials = GoogleCredentials.fromStream(inputStream);
-            Storage storage = StorageOptions.newBuilder().setCredentials(credentials).build().getService();
-            storage.delete(blobId);
-            System.out.println("File deleted successfully from Firebase Storage.");
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.err.println("Error deleting file from Firebase Storage: " + e.getMessage());
-        }
-    }
 
     private DocumentDetailsResponse mapToDTOResponse(Document document) {
         Set<Metadata> metadataSet = metadataRepository.getMetadataByDocumentId(document.getId());
         Set<MetadataResponse> metadataResponses = metadataSet.stream().map(metadata -> new MetadataResponse(metadata.getCle(), metadata.getValeur())).collect(Collectors.toSet());
 
-        return new DocumentDetailsResponse(document.getNom(), document.getType(), document.getDateCreation(), metadataResponses);
+        return new DocumentDetailsResponse(document.getId(), document.getNom(), document.getType(), document.getDateCreation(), metadataResponses);
     }
+
 
 }

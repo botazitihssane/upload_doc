@@ -14,8 +14,7 @@ import fr.norsys.upload_doc.service.DocumentService;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 
 import fr.norsys.upload_doc.dto.DocumentDetailsResponse;
 import fr.norsys.upload_doc.dto.MetadataResponse;
@@ -31,6 +30,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
@@ -39,9 +39,11 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.UUID;
@@ -208,48 +210,64 @@ public class DocumentServiceImpl implements DocumentService {
         Set<Metadata> metadataSet = metadataRepository.getMetadataByDocumentId(document.getId());
         Set<MetadataResponse> metadataResponses = metadataSet.stream().map(metadata -> new MetadataResponse(metadata.getCle(), metadata.getValeur())).collect(Collectors.toSet());
 
-        return new DocumentDetailsResponse(document.getNom(), document.getType(), document.getDateCreation(), metadataResponses);
+        return new DocumentDetailsResponse(document.getId(), document.getNom(), document.getType(), document.getDateCreation(), metadataResponses);
     }
-
-
-    public Resource downloadDocumentById(UUID documentId) {
+    private String extractFileNameFromUrl(String url) {
         try {
-            // Supposons que vous avez une méthode dans votre service ou votre repository pour récupérer l'URL du document par son ID
-            Optional<Document> documentFounded = documentRepository.findById(documentId);
-            if(documentFounded.isPresent()){
-                Document document=documentFounded.get();
-                String documentUrl=document.getEmplacement();
-                if (documentUrl != null && !documentUrl.isEmpty()) {
-                    // Initialisez Firebase Storage avec vos informations d'authentification
-                    GoogleCredentials credentials = GoogleCredentials.fromStream(
-                            getClass().getClassLoader().getResourceAsStream("uploaddoc-firebase-adminsdk.json"));
-                    Storage storage = StorageOptions.newBuilder().setCredentials(credentials).build().getService();
-
-                    // Récupérez le nom du fichier à partir de l'URL (s'il est stocké dans l'URL)
-                    String fileName = documentUrl.substring(documentUrl.lastIndexOf("/") + 1);
-
-                    // Récupérez le blob (fichier) depuis Firebase Storage
-                    Blob blob = storage.get("uploaddoc-a26b9.appspot.com", fileName);
-
-                    // Si le blob (fichier) existe
-                    if (blob != null) {
-                        // Téléchargez le contenu du blob dans un tableau de bytes
-                        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                        blob.downloadTo(outputStream);
-
-                        // Retournez le contenu du fichier sous forme de Resource
-                        return new ByteArrayResource(outputStream.toByteArray());
-                    }
-                }
-            }
-
-        } catch (IOException e) {
+            URL parsedUrl = new URL(url);
+            String path = parsedUrl.getPath();
+            return Paths.get(path).getFileName().toString();
+        } catch (Exception e) {
             e.printStackTrace();
-            // Gérez l'exception et renvoyez null ou une Resource vide en cas d'erreur
+            return null;
         }
-
-        // Si le document n'existe pas ou s'il y a une erreur, renvoyez null ou une Resource vide
-        return null;
     }
+
+    public ResponseEntity<Resource> downloadDocumentById( UUID id) throws IOException {
+        Optional<Document> documentFounded = documentRepository.findById(id);
+        if(documentFounded.isPresent()){
+            Document document=documentFounded.get();
+            String documentUrl=document.getEmplacement();
+            if (documentUrl != null && !documentUrl.isEmpty()) {
+                String extractedFileName = extractFileNameFromUrl(documentUrl);
+
+                InputStream inputStream = getClass().getClassLoader().getResourceAsStream("uploaddoc-firebase-adminsdk.json");
+                GoogleCredentials credentials = GoogleCredentials.fromStream(inputStream);
+
+                Storage storage = StorageOptions.newBuilder().setCredentials(credentials).build().getService();
+
+                String bucketName = "uploaddoc-a26b9.appspot.com";
+
+
+                Blob blob = storage.get(BlobId.of(bucketName, extractedFileName));
+                System.out.println(blob);
+
+                if (blob == null) {
+                    return ResponseEntity.notFound().build();
+                }
+
+
+                byte[] fileContent = blob.getContent();
+
+
+                Resource resource = new ByteArrayResource(fileContent);
+
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+                headers.setContentDispositionFormData("attachment", extractedFileName);
+
+                return ResponseEntity.ok()
+                        .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + extractedFileName + "\"")
+                        .body(resource);
+            }
+        }
+        return null;
+
+    }
+
+
+
 
 }

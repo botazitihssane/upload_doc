@@ -1,6 +1,7 @@
 package fr.norsys.upload_doc.controller;
 
 import fr.norsys.upload_doc.dto.AccesSaveRequest;
+import fr.norsys.upload_doc.exception.AccesAlreadyExistException;
 import fr.norsys.upload_doc.exception.DocumentNotFound;
 import fr.norsys.upload_doc.exception.UserNotFoundException;
 import fr.norsys.upload_doc.service.AccesService;
@@ -23,6 +24,8 @@ public class AccesController {
             return ResponseEntity.ok().build();
         } catch (UserNotFoundException | DocumentNotFound e) {
             return ResponseEntity.status(HttpStatus.SC_NOT_FOUND).body(e.getMessage());
+        } catch (AccesAlreadyExistException e) {
+            return ResponseEntity.status(HttpStatus.SC_INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
     }
 }

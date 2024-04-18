@@ -3,6 +3,20 @@ package fr.norsys.upload_doc.service.impl;
 
 import com.google.auth.Credentials;
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.cloud.storage.*;
+import fr.norsys.upload_doc.dto.DocumentSaveRequest;
+import fr.norsys.upload_doc.dto.DocumentSaveResponse;
+import fr.norsys.upload_doc.entity.Document;
+import fr.norsys.upload_doc.entity.Metadata;
+import fr.norsys.upload_doc.repository.DocumentRepository;
+
+import fr.norsys.upload_doc.service.DocumentService;
+import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.*;
+
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
@@ -20,15 +34,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
@@ -205,6 +222,62 @@ public class DocumentServiceImpl implements DocumentService {
 
         return new DocumentDetailsResponse(document.getId(), document.getNom(), document.getType(), document.getDateCreation(), metadataResponses);
     }
+    private String extractFileNameFromUrl(String url) {
+        try {
+            URL parsedUrl = new URL(url);
+            String path = parsedUrl.getPath();
+            return Paths.get(path).getFileName().toString();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public ResponseEntity<Resource> downloadDocumentById( UUID id) throws IOException {
+        Optional<Document> documentFounded = documentRepository.findById(id);
+        if(documentFounded.isPresent()){
+            Document document=documentFounded.get();
+            String documentUrl=document.getEmplacement();
+            if (documentUrl != null && !documentUrl.isEmpty()) {
+                String extractedFileName = extractFileNameFromUrl(documentUrl);
+
+                InputStream inputStream = getClass().getClassLoader().getResourceAsStream("uploaddoc-firebase-adminsdk.json");
+                GoogleCredentials credentials = GoogleCredentials.fromStream(inputStream);
+
+                Storage storage = StorageOptions.newBuilder().setCredentials(credentials).build().getService();
+
+                String bucketName = "uploaddoc-a26b9.appspot.com";
+
+
+                Blob blob = storage.get(BlobId.of(bucketName, extractedFileName));
+                System.out.println(blob);
+
+                if (blob == null) {
+                    return ResponseEntity.notFound().build();
+                }
+
+
+                byte[] fileContent = blob.getContent();
+
+
+                Resource resource = new ByteArrayResource(fileContent);
+
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+                headers.setContentDispositionFormData("attachment", extractedFileName);
+
+                return ResponseEntity.ok()
+                        .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + extractedFileName + "\"")
+                        .body(resource);
+            }
+        }
+        return null;
+
+    }
+
+
 
 
 }

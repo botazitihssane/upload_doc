@@ -30,7 +30,7 @@ public class Document {
     private String hash;
 
 
-    @OneToMany(mappedBy = "document")
+    @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Metadata> metadatas ;
 
 

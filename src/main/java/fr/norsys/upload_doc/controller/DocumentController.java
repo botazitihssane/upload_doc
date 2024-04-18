@@ -4,31 +4,22 @@ package fr.norsys.upload_doc.controller;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.norsys.upload_doc.dto.DocumentDetailsResponse;
-
-import fr.norsys.upload_doc.dto.DocumentSaveResponse;
-import fr.norsys.upload_doc.dto.MetadataResponse;
-import fr.norsys.upload_doc.entity.Document;
-import fr.norsys.upload_doc.entity.Metadata;
-
 import fr.norsys.upload_doc.dto.DocumentSaveRequest;
-
 import fr.norsys.upload_doc.exception.MetadataNotFoundException;
 import fr.norsys.upload_doc.service.DocumentService;
-import fr.norsys.upload_doc.service.impl.DocumentServiceImpl;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.io.IOException;
 import java.time.LocalDate;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("api/document")
@@ -37,9 +28,7 @@ import java.util.stream.Collectors;
 public class DocumentController {
 
     @Autowired
-    private DocumentServiceImpl documentServiceImpl;
-    @Autowired
-    private  DocumentService documentService;
+    private DocumentService documentService;
 
     @PostMapping("/save")
     public ResponseEntity<?> saveDocument(@RequestParam("nom") String nom,
@@ -58,7 +47,7 @@ public class DocumentController {
         }
 
         DocumentSaveRequest documentSaveRequest = new DocumentSaveRequest(nom, type, dateCreation, metadata);
-        return documentServiceImpl.save(documentSaveRequest, multipartFile);
+        return documentService.save(documentSaveRequest, multipartFile);
     }
 
 
@@ -94,11 +83,8 @@ public class DocumentController {
 
     @DeleteMapping("/{id}")
     public void delete(@PathVariable UUID id) {
-
-            documentServiceImpl.deleteById(id);
-
-
+        documentService.deleteById(id);
     }
-   
+
 
 }

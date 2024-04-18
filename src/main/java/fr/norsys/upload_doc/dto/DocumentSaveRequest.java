@@ -1,10 +1,13 @@
 package fr.norsys.upload_doc.dto;
 
-import fr.norsys.upload_doc.entity.Metadata;
+import org.springframework.web.bind.annotation.RequestParam;
 
-import java.util.Date;
-import java.util.List;
+import java.time.LocalDate;
 import java.util.Map;
 
-public record DocumentSaveRequest(String nom, String type, Date dateCreation, Map<String,String> metadatas) {
+public record DocumentSaveRequest(@RequestParam("nom") String nom,
+                                  @RequestParam("type") String type,
+                                  @RequestParam("dateCreation") LocalDate dateCreation,
+                                  @RequestParam("metadata") Map<String, String> metadata) {
+
 }

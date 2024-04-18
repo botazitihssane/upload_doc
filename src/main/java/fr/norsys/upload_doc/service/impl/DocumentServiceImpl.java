@@ -3,37 +3,24 @@ package fr.norsys.upload_doc.service.impl;
 
 import com.google.auth.Credentials;
 import com.google.auth.oauth2.GoogleCredentials;
-import com.google.cloud.storage.*;
-import fr.norsys.upload_doc.dto.DocumentSaveRequest;
-import fr.norsys.upload_doc.dto.DocumentSaveResponse;
-import fr.norsys.upload_doc.entity.Document;
-import fr.norsys.upload_doc.entity.Metadata;
-import fr.norsys.upload_doc.repository.DocumentRepository;
-
-import fr.norsys.upload_doc.service.DocumentService;
-import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-
+import com.google.cloud.storage.BlobId;
+import com.google.cloud.storage.BlobInfo;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
 import fr.norsys.upload_doc.dto.DocumentDetailsResponse;
+import fr.norsys.upload_doc.dto.DocumentSaveRequest;
 import fr.norsys.upload_doc.dto.MetadataResponse;
 import fr.norsys.upload_doc.entity.Document;
 import fr.norsys.upload_doc.entity.Metadata;
 import fr.norsys.upload_doc.exception.MetadataNotFoundException;
 import fr.norsys.upload_doc.repository.DocumentRepository;
-
 import fr.norsys.upload_doc.repository.MetadataRepository;
-
-import lombok.AllArgsConstructor;
+import fr.norsys.upload_doc.service.DocumentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.io.*;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -44,22 +31,18 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.UUID;
-import java.util.NoSuchElementException;
-import java.util.Set;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
-import org.springframework.core.io.Resource;
+
 @Service
 
 public class DocumentServiceImpl implements DocumentService {
 
     @Autowired
     private DocumentRepository documentRepository;
-   @Autowired
-    private  MetadataRepository metadataRepository;
-
+    @Autowired
+    private MetadataRepository metadataRepository;
 
 
     private String uploadFile(File file, String fileName) throws IOException {
@@ -109,10 +92,8 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     @Override
-    public ResponseEntity<?> save(Document document, MultipartFile multipartFile) {
-
+    public ResponseEntity<?> save(DocumentSaveRequest documentSaveRequest, MultipartFile multipartFile) {
         try {
-
             String fileHash = calculateHash(multipartFile);
             System.out.println("file hash" + fileHash);
 
@@ -125,27 +106,23 @@ public class DocumentServiceImpl implements DocumentService {
                 }
             }
 
-
             String fileName = multipartFile.getOriginalFilename();
             fileName = UUID.randomUUID().toString().concat(this.getExtension(fileName));
             File file = this.convertToFile(multipartFile, fileName);
             String URL = this.uploadFile(file, fileName);
             file.delete();
 
-
+            Document document = new Document();
+            document.setNom(documentSaveRequest.nom());
+            document.setType(documentSaveRequest.type());
+            document.setDateCreation(documentSaveRequest.dateCreation());
             document.setEmplacement(URL);
             document.setHash(fileHash);
+
             documentRepository.save(document);
 
-
-            for (Metadata meta : document.getMetadatas()) {
-
-                meta.setCle(meta.getCle());
-                meta.setValeur(meta.getValeur());
-                meta.setDocument(document);
-
-                metadataRepository.save(meta);
-            }
+            Set<Metadata> metadataSet = createMetadataSet(documentSaveRequest.metadata(), document);
+            metadataRepository.saveAll(metadataSet);
             return ResponseEntity.status(HttpStatus.CREATED).body("Document saved successfully. URL: " + document.getEmplacement());
 
         } catch (Exception e) {
@@ -153,6 +130,23 @@ public class DocumentServiceImpl implements DocumentService {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred while saving the document.");
 
         }
+    }
+
+    public Set<Metadata> createMetadataSet(Map<String, String> metadataMap, Document document) {
+        System.out.println(metadataMap);
+        Set<Metadata> metadataSet = new HashSet<>();
+
+        if (metadataMap != null) {
+            for (Map.Entry<String, String> entry : metadataMap.entrySet()) {
+                Metadata metadata = new Metadata();
+                metadata.setCle(entry.getKey());
+                metadata.setValeur(entry.getValue());
+                metadata.setDocument(document);
+                metadataSet.add(metadata);
+            }
+        }
+
+        return metadataSet;
     }
 
     private String calculateHash(MultipartFile file) {
@@ -181,7 +175,7 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     public void deleteById(UUID id) {
-      documentRepository.deleteById(id);
+        documentRepository.deleteById(id);
     }
 
 
@@ -204,52 +198,13 @@ public class DocumentServiceImpl implements DocumentService {
         return documentDetailsResponses;
     }
 
+
     private DocumentDetailsResponse mapToDTOResponse(Document document) {
         Set<Metadata> metadataSet = metadataRepository.getMetadataByDocumentId(document.getId());
         Set<MetadataResponse> metadataResponses = metadataSet.stream().map(metadata -> new MetadataResponse(metadata.getCle(), metadata.getValeur())).collect(Collectors.toSet());
 
-        return new DocumentDetailsResponse(document.getNom(), document.getType(), document.getDateCreation(), metadataResponses);
+        return new DocumentDetailsResponse(document.getId(), document.getNom(), document.getType(), document.getDateCreation(), metadataResponses);
     }
 
-
-    public Resource downloadDocumentById(UUID documentId) {
-        try {
-            // Supposons que vous avez une méthode dans votre service ou votre repository pour récupérer l'URL du document par son ID
-            Optional<Document> documentFounded = documentRepository.findById(documentId);
-            if(documentFounded.isPresent()){
-                Document document=documentFounded.get();
-                String documentUrl=document.getEmplacement();
-                if (documentUrl != null && !documentUrl.isEmpty()) {
-                    // Initialisez Firebase Storage avec vos informations d'authentification
-                    GoogleCredentials credentials = GoogleCredentials.fromStream(
-                            getClass().getClassLoader().getResourceAsStream("uploaddoc-firebase-adminsdk.json"));
-                    Storage storage = StorageOptions.newBuilder().setCredentials(credentials).build().getService();
-
-                    // Récupérez le nom du fichier à partir de l'URL (s'il est stocké dans l'URL)
-                    String fileName = documentUrl.substring(documentUrl.lastIndexOf("/") + 1);
-
-                    // Récupérez le blob (fichier) depuis Firebase Storage
-                    Blob blob = storage.get("uploaddoc-a26b9.appspot.com", fileName);
-
-                    // Si le blob (fichier) existe
-                    if (blob != null) {
-                        // Téléchargez le contenu du blob dans un tableau de bytes
-                        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                        blob.downloadTo(outputStream);
-
-                        // Retournez le contenu du fichier sous forme de Resource
-                        return new ByteArrayResource(outputStream.toByteArray());
-                    }
-                }
-            }
-
-        } catch (IOException e) {
-            e.printStackTrace();
-            // Gérez l'exception et renvoyez null ou une Resource vide en cas d'erreur
-        }
-
-        // Si le document n'existe pas ou s'il y a une erreur, renvoyez null ou une Resource vide
-        return null;
-    }
 
 }

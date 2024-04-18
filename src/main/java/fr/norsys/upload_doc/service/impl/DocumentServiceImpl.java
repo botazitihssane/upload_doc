@@ -4,6 +4,23 @@ package fr.norsys.upload_doc.service.impl;
 import com.google.auth.Credentials;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.storage.*;
+import fr.norsys.upload_doc.dto.DocumentSaveRequest;
+import fr.norsys.upload_doc.dto.DocumentSaveResponse;
+import fr.norsys.upload_doc.entity.Document;
+import fr.norsys.upload_doc.entity.Metadata;
+import fr.norsys.upload_doc.repository.DocumentRepository;
+
+import fr.norsys.upload_doc.service.DocumentService;
+import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.*;
+
+import com.google.cloud.storage.BlobId;
+import com.google.cloud.storage.BlobInfo;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
 import fr.norsys.upload_doc.dto.DocumentDetailsResponse;
 import fr.norsys.upload_doc.dto.DocumentSaveRequest;
 import fr.norsys.upload_doc.dto.MetadataResponse;
@@ -14,13 +31,10 @@ import fr.norsys.upload_doc.repository.DocumentRepository;
 import fr.norsys.upload_doc.repository.MetadataRepository;
 import fr.norsys.upload_doc.service.DocumentService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.core.io.Resource;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;

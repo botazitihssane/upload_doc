@@ -2,8 +2,10 @@ package fr.norsys.upload_doc.service;
 
 
 import fr.norsys.upload_doc.dto.DocumentDetailsResponse;
-import fr.norsys.upload_doc.dto.DocumentSaveRequest;
+import fr.norsys.upload_doc.entity.Document;
+import fr.norsys.upload_doc.entity.Metadata;
 import org.springframework.core.io.Resource;
+import fr.norsys.upload_doc.dto.DocumentSaveRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
 

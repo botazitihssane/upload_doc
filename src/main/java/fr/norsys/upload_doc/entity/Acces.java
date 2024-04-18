@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.Set;
 import java.util.UUID;
 
 @NoArgsConstructor
@@ -22,6 +23,7 @@ public class Acces {
     private Document idDocument;
     @ManyToOne
     private Utilisateur idUtilisateur;
+    @ElementCollection
     @Enumerated(EnumType.STRING)
-    private Droit droits;
+    private Set<Droit> droits;
 }

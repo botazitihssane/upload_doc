@@ -1,7 +1,8 @@
 package fr.norsys.upload_doc.controller;
 
-import fr.norsys.upload_doc.dto.AccesSaveRequest;
+import fr.norsys.upload_doc.dto.AccesRequest;
 import fr.norsys.upload_doc.exception.AccesAlreadyExistException;
+import fr.norsys.upload_doc.exception.AccesNotFoundException;
 import fr.norsys.upload_doc.exception.DocumentNotFound;
 import fr.norsys.upload_doc.exception.UserNotFoundException;
 import fr.norsys.upload_doc.service.AccesService;
@@ -17,14 +18,26 @@ import org.springframework.web.bind.annotation.*;
 public class AccesController {
     private final AccesService accesService;
 
-    @PostMapping
-    ResponseEntity<?> addAcces(@RequestBody AccesSaveRequest accesSaveRequest) throws UserNotFoundException, DocumentNotFound {
+    @PostMapping("/add")
+    ResponseEntity<?> addAcces(@RequestBody AccesRequest accesRequest) {
         try {
-            accesService.addAccesToUser(accesSaveRequest);
+            accesService.addAccesToUser(accesRequest);
             return ResponseEntity.ok().build();
         } catch (UserNotFoundException | DocumentNotFound e) {
             return ResponseEntity.status(HttpStatus.SC_NOT_FOUND).body(e.getMessage());
         } catch (AccesAlreadyExistException e) {
+            return ResponseEntity.status(HttpStatus.SC_INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/revoke")
+    ResponseEntity<?> revokeAcces(@RequestBody AccesRequest accesRequest) {
+        try {
+            accesService.revokeAcces(accesRequest);
+            return ResponseEntity.ok().build();
+        } catch (UserNotFoundException | DocumentNotFound e) {
+            return ResponseEntity.status(HttpStatus.SC_NOT_FOUND).body(e.getMessage());
+        } catch (AccesNotFoundException e) {
             return ResponseEntity.status(HttpStatus.SC_INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
     }

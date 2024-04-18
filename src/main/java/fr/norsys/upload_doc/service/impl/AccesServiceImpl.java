@@ -1,11 +1,12 @@
 package fr.norsys.upload_doc.service.impl;
 
-import fr.norsys.upload_doc.dto.AccesSaveRequest;
+import fr.norsys.upload_doc.dto.AccesRequest;
 import fr.norsys.upload_doc.entity.Acces;
 import fr.norsys.upload_doc.entity.Document;
 import fr.norsys.upload_doc.entity.Utilisateur;
 import fr.norsys.upload_doc.enumeration.Droit;
 import fr.norsys.upload_doc.exception.AccesAlreadyExistException;
+import fr.norsys.upload_doc.exception.AccesNotFoundException;
 import fr.norsys.upload_doc.exception.DocumentNotFound;
 import fr.norsys.upload_doc.exception.UserNotFoundException;
 import fr.norsys.upload_doc.repository.AccesRepository;
@@ -28,22 +29,16 @@ public class AccesServiceImpl implements AccesService {
     private final UtilisateurRepository utilisateurRepository;
 
     @Override
-    public void addAccesToUser(AccesSaveRequest accesSaveRequest) throws UserNotFoundException, DocumentNotFound, AccesAlreadyExistException {
-        Utilisateur utilisateur = Optional.of(utilisateurRepository.findByEmail(accesSaveRequest.email()))
-                .orElseThrow(() -> new UserNotFoundException(accesSaveRequest.email()));
+    public void addAccesToUser(AccesRequest accesRequest) throws UserNotFoundException, DocumentNotFound, AccesAlreadyExistException {
+        Utilisateur utilisateur = retrieveUtilisateur(accesRequest.email());
+        Document document = retrieveDocument(accesRequest.docId());
 
-        Document document = documentRepository.findById(UUID.fromString(accesSaveRequest.docId()))
-                .orElseThrow(() -> new DocumentNotFound(accesSaveRequest.docId()));
-
-        Set<Droit> requestedDroits = accesSaveRequest.droits();
+        Set<Droit> requestedDroits = accesRequest.droits();
 
         Optional<List<Acces>> existingAccesOpt = accesRepository.findExistingAcces(document.getId(), utilisateur.getId(), requestedDroits);
 
-        System.out.println(accesSaveRequest);
-
         if (existingAccesOpt.isPresent() && !existingAccesOpt.get().isEmpty()) {
             List<Acces> accesList = existingAccesOpt.get();
-            System.out.println("Entered with non-empty existingAccesOpt: " + accesList);
 
             for (Acces existingAcces : accesList) {
                 Set<Droit> existingDroits = existingAcces.getDroits();
@@ -56,13 +51,49 @@ public class AccesServiceImpl implements AccesService {
                 }
             }
         } else {
-            System.out.println("Entered with empty existingAccesOpt");
             Acces newAcces = new Acces();
             newAcces.setIdDocument(document);
             newAcces.setIdUtilisateur(utilisateur);
             newAcces.setDroits(requestedDroits);
             accesRepository.save(newAcces);
         }
+    }
+
+    @Override
+    public void revokeAcces(AccesRequest accesRequest) throws UserNotFoundException, DocumentNotFound, AccesNotFoundException {
+        Utilisateur utilisateur = retrieveUtilisateur(accesRequest.email());
+        Document document = retrieveDocument(accesRequest.docId());
+
+        Set<Droit> revokedDroits = accesRequest.droits();
+
+        Optional<List<Acces>> existingAccesOpt = accesRepository.findExistingAcces(document.getId(), utilisateur.getId(), revokedDroits);
+
+        if (existingAccesOpt.get().isEmpty()) throw new AccesNotFoundException();
+        else {
+            List<Acces> acces = existingAccesOpt.get();
+            boolean accessRemoved = false;
+
+            for (Acces existingAcces : acces) {
+                Set<Droit> existingDroits = existingAcces.getDroits();
+                existingDroits.removeAll(revokedDroits);
+
+                if (existingDroits.isEmpty()) {
+                    accesRepository.delete(existingAcces);
+                } else {
+                    accesRepository.save(existingAcces);
+                }
+                accessRemoved = true;
+            }
+
+        }
+    }
+
+    private Utilisateur retrieveUtilisateur(String email) throws UserNotFoundException {
+        return Optional.of(utilisateurRepository.findByEmail(email)).orElseThrow(() -> new UserNotFoundException(email));
+    }
+
+    private Document retrieveDocument(String docId) throws DocumentNotFound {
+        return documentRepository.findById(UUID.fromString(docId)).orElseThrow(() -> new DocumentNotFound(docId));
     }
 
 }

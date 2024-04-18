@@ -95,7 +95,6 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     public ResponseEntity<?> save(DocumentSaveRequest documentSaveRequest, MultipartFile multipartFile) {
-
         try {
             String fileHash = calculateHash(multipartFile);
             System.out.println("file hash" + fileHash);
@@ -136,6 +135,7 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     public Set<Metadata> createMetadataSet(Map<String, String> metadataMap, Document document) {
+        System.out.println(metadataMap);
         Set<Metadata> metadataSet = new HashSet<>();
 
         if (metadataMap != null) {

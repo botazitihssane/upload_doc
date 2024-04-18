@@ -3,10 +3,20 @@ package fr.norsys.upload_doc.service.impl;
 
 import com.google.auth.Credentials;
 import com.google.auth.oauth2.GoogleCredentials;
-import com.google.cloud.storage.BlobId;
-import com.google.cloud.storage.BlobInfo;
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageOptions;
+import com.google.cloud.storage.*;
+import fr.norsys.upload_doc.dto.DocumentSaveRequest;
+import fr.norsys.upload_doc.dto.DocumentSaveResponse;
+import fr.norsys.upload_doc.entity.Document;
+import fr.norsys.upload_doc.entity.Metadata;
+import fr.norsys.upload_doc.repository.DocumentRepository;
+
+import fr.norsys.upload_doc.service.DocumentService;
+import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
 import fr.norsys.upload_doc.dto.DocumentDetailsResponse;
 import fr.norsys.upload_doc.dto.DocumentSaveRequest;
 import fr.norsys.upload_doc.dto.MetadataResponse;
@@ -14,14 +24,17 @@ import fr.norsys.upload_doc.entity.Document;
 import fr.norsys.upload_doc.entity.Metadata;
 import fr.norsys.upload_doc.exception.MetadataNotFoundException;
 import fr.norsys.upload_doc.repository.DocumentRepository;
+
 import fr.norsys.upload_doc.repository.MetadataRepository;
-import fr.norsys.upload_doc.service.DocumentService;
+
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.io.*;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -32,20 +45,23 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.UUID;
+import java.util.NoSuchElementException;
+import java.util.Set;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
-
+import org.springframework.core.io.Resource;
 @Service
-@AllArgsConstructor
+
 public class DocumentServiceImpl implements DocumentService {
 
     @Autowired
     private DocumentRepository documentRepository;
-    @Autowired
-    private MetadataRepository metaDataRepository;
+   @Autowired
+    private  MetadataRepository metadataRepository;
 
-    private final MetadataRepository metadataRepository;
+
 
     private String uploadFile(File file, String fileName) throws IOException {
         String contentType = getContentType(fileName);
@@ -89,7 +105,7 @@ public class DocumentServiceImpl implements DocumentService {
             case ".txt":
                 return "text/plain";
             default:
-                return "application/octet-stream"; // fallback to binary data
+                return "application/octet-stream";
         }
     }
 
@@ -167,12 +183,19 @@ public class DocumentServiceImpl implements DocumentService {
         }
     }
 
+
     @Override
     public DocumentDetailsResponse getDocumentByID(UUID id) {
         Document document = documentRepository.findById(id).orElseThrow(() -> new NoSuchElementException("No document with the specified id"));
 
         return mapToDTOResponse(document);
     }
+
+    @Override
+    public void deleteById(UUID id) {
+      documentRepository.deleteById(id);
+    }
+
 
     @Override
     public List<DocumentDetailsResponse> searchDocuments(String nom, String type, LocalDate date) {
@@ -199,5 +222,8 @@ public class DocumentServiceImpl implements DocumentService {
 
         return new DocumentDetailsResponse(document.getId(), document.getNom(), document.getType(), document.getDateCreation(), metadataResponses);
     }
+
+
+   
 
 }

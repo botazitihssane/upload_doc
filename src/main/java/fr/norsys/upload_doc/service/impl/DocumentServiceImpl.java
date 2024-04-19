@@ -125,15 +125,18 @@ public class DocumentServiceImpl implements DocumentService {
             Document document = new Document();
             document.setNom(documentSaveRequest.nom());
             document.setType(documentSaveRequest.type());
-            document.setDateCreation(documentSaveRequest.dateCreation());
+            document.setDateCreation(LocalDate.now());
             document.setEmplacement(URL);
             document.setHash(fileHash);
             document.setUtilisateur(utilisateur);
 
             documentRepository.save(document);
 
-            Set<Metadata> metadataSet = createMetadataSet(documentSaveRequest.metadata(), document);
-            metadataRepository.saveAll(metadataSet);
+            if (documentSaveRequest.metadata() != null) {
+                Set<Metadata> metadataSet = createMetadataSet(documentSaveRequest.metadata(), document);
+                metadataRepository.saveAll(metadataSet);
+            }
+
             return ResponseEntity.status(HttpStatus.CREATED).body("Document saved successfully. URL: " + document.getEmplacement());
 
         } catch (Exception e) {

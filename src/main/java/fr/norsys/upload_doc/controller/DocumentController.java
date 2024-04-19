@@ -16,10 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.UUID;
+import java.util.*;
 
 @RestController
 @RequestMapping("api/document")
@@ -33,21 +30,25 @@ public class DocumentController {
     @PostMapping("/save")
     public ResponseEntity<?> saveDocument(@RequestParam("nom") String nom,
                                           @RequestParam("type") String type,
-                                          @RequestParam("dateCreation") LocalDate dateCreation,
-                                          @RequestParam("metadata") String metadataJson,
+                                          @RequestParam(value = "metadata", required = false) String metadataJson,
                                           @RequestParam("email") String email,
                                           @RequestParam("file") MultipartFile multipartFile) {
-        ObjectMapper objectMapper = new ObjectMapper();
-        Map<String, String> metadata;
-        try {
-            metadata = objectMapper.readValue(metadataJson, new TypeReference<Map<String, String>>() {
-            });
-        } catch (IOException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Invalid metadata JSON");
+
+        Map<String, String> metadata = new HashMap<>();
+
+        if (metadataJson != null && !metadataJson.isEmpty()) {
+            ObjectMapper objectMapper = new ObjectMapper();
+            try {
+                // Parse the JSON string to a map
+                metadata = objectMapper.readValue(metadataJson, new TypeReference<Map<String, String>>() {
+                });
+            } catch (IOException e) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body("Invalid metadata JSON");
+            }
         }
 
-        DocumentSaveRequest documentSaveRequest = new DocumentSaveRequest(nom, type, dateCreation, email, metadata);
+        DocumentSaveRequest documentSaveRequest = new DocumentSaveRequest(nom, type, email, metadata);
         return documentService.save(documentSaveRequest, multipartFile);
     }
 

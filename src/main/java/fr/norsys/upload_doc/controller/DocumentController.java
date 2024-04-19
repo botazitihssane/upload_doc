@@ -29,11 +29,7 @@ public class DocumentController {
     private DocumentService documentService;
 
     @PostMapping("/save")
-    public ResponseEntity<?> saveDocument(@RequestParam("nom") String nom,
-                                          @RequestParam("type") String type,
-                                          @RequestParam(value = "metadata", required = false) String metadataJson,
-                                          @RequestParam("email") String email,
-                                          @RequestParam("file") MultipartFile multipartFile) {
+    public ResponseEntity<?> saveDocument(@RequestParam("nom") String nom, @RequestParam("type") String type, @RequestParam(value = "metadata", required = false) String metadataJson, @RequestParam("email") String email, @RequestParam("file") MultipartFile multipartFile) {
 
         Map<String, String> metadata = new HashMap<>();
 
@@ -43,8 +39,7 @@ public class DocumentController {
                 metadata = objectMapper.readValue(metadataJson, new TypeReference<Map<String, String>>() {
                 });
             } catch (IOException e) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body("Invalid metadata JSON");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid metadata JSON");
             }
         }
 
@@ -73,12 +68,14 @@ public class DocumentController {
     }
 
     @GetMapping("/search/metadata")
-    public ResponseEntity<?> searchDocumentsByMetaData(@RequestParam(required = false) Map<String, String> metadata) {
+    public ResponseEntity<?> searchDocumentsByMetaData(@RequestParam(required = false) Map<String, String> metadata, @RequestParam("email") String email) {
         try {
-            List<DocumentDetailsResponse> response = documentService.searchDocumentsByMetaData(metadata);
+            List<DocumentDetailsResponse> response = documentService.searchDocumentsByMetaData(metadata, email);
             return ResponseEntity.ok(response);
         } catch (MetadataNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (UserNotFoundException e) {
+            throw new RuntimeException(e);
         }
 
     }

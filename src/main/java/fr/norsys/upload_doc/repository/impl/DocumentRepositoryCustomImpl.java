@@ -51,12 +51,6 @@ public class DocumentRepositoryCustomImpl implements DocumentRepositoryCustom {
         }
     }
 
-    private void addOwnerPredicates(CriteriaBuilder criteriaBuilder, Root<Document> documentRoot, List<Predicate> predicates, Utilisateur utilisateur) {
-        if (utilisateur != null) {
-            Predicate ownerPredicate = criteriaBuilder.equal(documentRoot.get("utilisateur"), utilisateur);
-            predicates.add(ownerPredicate);
-        }
-    }
 
     private void addAccessPrivilegePredicates(CriteriaBuilder criteriaBuilder, Root<Document> documentRoot, List<Predicate> predicates, Utilisateur utilisateur) {
         if (utilisateur != null) {
@@ -91,7 +85,6 @@ public class DocumentRepositoryCustomImpl implements DocumentRepositoryCustom {
         addNomPredicate(criteriaBuilder, documentRoot, predicates, nom);
         addTypePredicate(criteriaBuilder, documentRoot, predicates, type);
         addDateCreationPredicate(criteriaBuilder, documentRoot, predicates, dateCreation);
-        // addOwnerPredicates(criteriaBuilder, documentRoot, predicates, utilisateur);
         addAccessPrivilegePredicates(criteriaBuilder, documentRoot, predicates, utilisateur);
 
         if (!predicates.isEmpty()) {
@@ -102,7 +95,7 @@ public class DocumentRepositoryCustomImpl implements DocumentRepositoryCustom {
     }
 
     @Override
-    public List<Document> searchDocumentsByMetaData(Map<String, String> metadatas) {
+    public List<Document> searchDocumentsByMetaData(Map<String, String> metadatas, Utilisateur utilisateur) {
         CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
         CriteriaQuery<Document> query = criteriaBuilder.createQuery(Document.class);
 
@@ -111,6 +104,7 @@ public class DocumentRepositoryCustomImpl implements DocumentRepositoryCustom {
         List<Predicate> predicates = new ArrayList<>();
 
         addMetadataPredicates(criteriaBuilder, documentRoot, predicates, metadatas);
+        addAccessPrivilegePredicates(criteriaBuilder, documentRoot, predicates, utilisateur);
 
         if (!predicates.isEmpty()) {
             query.where(criteriaBuilder.and(predicates.toArray(new Predicate[0])));

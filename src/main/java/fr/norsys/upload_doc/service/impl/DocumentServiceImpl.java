@@ -194,8 +194,9 @@ public class DocumentServiceImpl implements DocumentService {
 
 
     @Override
-    public List<DocumentDetailsResponse> searchDocuments(String nom, String type, LocalDate date) {
-        List<Document> documents = documentRepository.searchDocuments(nom, type, date);
+    public List<DocumentDetailsResponse> searchDocuments(String nom, String type, LocalDate date,String email) throws UserNotFoundException {
+        Utilisateur utilisateur = Optional.of(utilisateurRepository.findByEmail(email)).orElseThrow(() -> new UserNotFoundException(email));
+        List<Document> documents = documentRepository.searchDocuments(nom, type, date,utilisateur);
         return documents.stream().map(this::mapToDTOResponse).collect(Collectors.toList());
     }
 

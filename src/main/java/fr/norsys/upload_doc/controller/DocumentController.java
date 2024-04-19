@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.norsys.upload_doc.dto.DocumentDetailsResponse;
 import fr.norsys.upload_doc.dto.DocumentSaveRequest;
 import fr.norsys.upload_doc.exception.MetadataNotFoundException;
+import fr.norsys.upload_doc.exception.UserNotFoundException;
 import fr.norsys.upload_doc.service.DocumentService;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,7 +40,6 @@ public class DocumentController {
         if (metadataJson != null && !metadataJson.isEmpty()) {
             ObjectMapper objectMapper = new ObjectMapper();
             try {
-                // Parse the JSON string to a map
                 metadata = objectMapper.readValue(metadataJson, new TypeReference<Map<String, String>>() {
                 });
             } catch (IOException e) {
@@ -67,8 +67,8 @@ public class DocumentController {
 
 
     @GetMapping("/search")
-    public ResponseEntity<List<DocumentDetailsResponse>> searchDocuments(@RequestParam(required = false, defaultValue = "") String nom, @RequestParam(required = false, defaultValue = "") String type, @RequestParam(required = false) LocalDate date) {
-        List<DocumentDetailsResponse> response = documentService.searchDocuments(nom, type, date);
+    public ResponseEntity<List<DocumentDetailsResponse>> searchDocuments(@RequestParam(required = false, defaultValue = "") String nom, @RequestParam(required = false, defaultValue = "") String type, @RequestParam(required = false) LocalDate date, @RequestParam(required = true) String email) throws UserNotFoundException {
+        List<DocumentDetailsResponse> response = documentService.searchDocuments(nom, type, date, email);
         return ResponseEntity.ok(response);
     }
 

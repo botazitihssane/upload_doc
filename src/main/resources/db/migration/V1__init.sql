@@ -31,10 +31,6 @@ create table acces
 (
     id                uuid not null
         primary key,
-    droits            varchar(255)
-        constraint acces_droits_check
-            check ((droits)::text = ANY
-                   ((ARRAY ['ECRITURE'::character varying, 'LECTURE'::character varying])::text[])),
     id_document_id    uuid
         constraint fkg1lscw2kt20me4l5uxcvjykp2
             references document,

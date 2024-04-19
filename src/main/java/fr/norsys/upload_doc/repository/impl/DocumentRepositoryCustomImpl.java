@@ -1,7 +1,7 @@
 package fr.norsys.upload_doc.repository.impl;
 
-import fr.norsys.upload_doc.entity.Document;
-import fr.norsys.upload_doc.entity.Metadata;
+import fr.norsys.upload_doc.entity.*;
+import fr.norsys.upload_doc.enumeration.Droit;
 import fr.norsys.upload_doc.repository.DocumentRepositoryCustom;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.criteria.*;
@@ -51,8 +51,36 @@ public class DocumentRepositoryCustomImpl implements DocumentRepositoryCustom {
         }
     }
 
+    private void addOwnerPredicates(CriteriaBuilder criteriaBuilder, Root<Document> documentRoot, List<Predicate> predicates, Utilisateur utilisateur) {
+        if (utilisateur != null) {
+            Predicate ownerPredicate = criteriaBuilder.equal(documentRoot.get("utilisateur"), utilisateur);
+            predicates.add(ownerPredicate);
+        }
+    }
+
+    private void addAccessPrivilegePredicates(CriteriaBuilder criteriaBuilder, Root<Document> documentRoot, List<Predicate> predicates, Utilisateur utilisateur) {
+        if (utilisateur != null) {
+            Predicate ownerPredicate = criteriaBuilder.equal(documentRoot.get("utilisateur"), utilisateur);
+
+            Join<Document, Acces> accesJoin = documentRoot.join("acces", JoinType.LEFT);
+
+            Predicate userAccessPredicate = criteriaBuilder.equal(accesJoin.get("idUtilisateur"), utilisateur);
+
+            Join<Acces, AccesDroits> accesDroitsJoin = accesJoin.join("accesDroits", JoinType.LEFT);
+
+            Predicate rightsPredicate = criteriaBuilder.equal(accesDroitsJoin.get("droits"), Droit.LECTURE);
+
+            Predicate accessPredicate = criteriaBuilder.and(userAccessPredicate, rightsPredicate);
+
+            Predicate combinedPredicate = criteriaBuilder.or(ownerPredicate, accessPredicate);
+
+            predicates.add(combinedPredicate);
+        }
+    }
+
+
     @Override
-    public List<Document> searchDocuments(String nom, String type, LocalDate dateCreation) {
+    public List<Document> searchDocuments(String nom, String type, LocalDate dateCreation, Utilisateur utilisateur) {
         CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
         CriteriaQuery<Document> query = criteriaBuilder.createQuery(Document.class);
 
@@ -63,6 +91,8 @@ public class DocumentRepositoryCustomImpl implements DocumentRepositoryCustom {
         addNomPredicate(criteriaBuilder, documentRoot, predicates, nom);
         addTypePredicate(criteriaBuilder, documentRoot, predicates, type);
         addDateCreationPredicate(criteriaBuilder, documentRoot, predicates, dateCreation);
+        // addOwnerPredicates(criteriaBuilder, documentRoot, predicates, utilisateur);
+        addAccessPrivilegePredicates(criteriaBuilder, documentRoot, predicates, utilisateur);
 
         if (!predicates.isEmpty()) {
             query.where(criteriaBuilder.and(predicates.toArray(new Predicate[0])));

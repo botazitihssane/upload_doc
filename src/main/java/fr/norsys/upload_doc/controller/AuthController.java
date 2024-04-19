@@ -7,12 +7,12 @@ import fr.norsys.upload_doc.dto.SignInRequest;
 import fr.norsys.upload_doc.dto.SignUpRequest;
 import fr.norsys.upload_doc.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
 @RestController
+@CrossOrigin(origins = "http://localhost:3000")
 @RequestMapping("/api/auth")
 public class AuthController {
 
@@ -29,22 +29,23 @@ public class AuthController {
         }
     }
     @PostMapping("/signin")
-    public String signInUser(@RequestBody SignInRequest signInRequest) {
+    public ResponseEntity<String> signInUser(@RequestBody SignInRequest signInRequest) {
         try {
-            return authService.signInUser(signInRequest);
+            String message = authService.signInUser(signInRequest);
+            if ("User authenticated successfully!".equals(message)) {
+                return ResponseEntity.ok(message);
+            } else {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(message);
+            }
         } catch (Exception e) {
-            return "Error: " + e.getMessage();
+            String errorMessage = e.getMessage();
+            HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+            if ("User not found".equals(errorMessage) || "Incorrect password".equals(errorMessage) || "Authentication failed".equals(errorMessage)) {
+                status = HttpStatus.UNAUTHORIZED;
+            }
+            return ResponseEntity.status(status).body(errorMessage);
         }
     }
 
-//    @PostMapping("/signin")
-//    public ResponseEntity<?> signIn(@RequestBody SignInRequest signInRequest) {
-////        try {
-////            FirebaseAuth.getInstance().signInWithEmailAndPassword(
-////                    signInRequest.getEmail(), signInRequest.getPassword());
-////            return ResponseEntity.ok("User signed in successfully!");
-////        } catch (FirebaseAuthException e) {
-////            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
-////        }
-//    }
+
 }

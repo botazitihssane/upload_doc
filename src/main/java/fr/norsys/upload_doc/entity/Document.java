@@ -31,12 +31,16 @@ public class Document {
 
 
     @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<Metadata> metadatas ;
+    private Set<Metadata> metadatas;
 
 
     @OneToMany(mappedBy = "idDocument")
     private List<Acces> acces;
 
+
+    @ManyToOne
+    @JoinColumn(name = "utilisateur_id")
+    private Utilisateur utilisateur;
 
     @Override
     public boolean equals(Object o) {

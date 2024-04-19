@@ -9,10 +9,14 @@ import fr.norsys.upload_doc.dto.DocumentSaveRequest;
 import fr.norsys.upload_doc.dto.MetadataResponse;
 import fr.norsys.upload_doc.entity.Document;
 import fr.norsys.upload_doc.entity.Metadata;
+import fr.norsys.upload_doc.entity.Utilisateur;
 import fr.norsys.upload_doc.exception.MetadataNotFoundException;
+import fr.norsys.upload_doc.exception.UserNotFoundException;
 import fr.norsys.upload_doc.repository.DocumentRepository;
 import fr.norsys.upload_doc.repository.MetadataRepository;
+import fr.norsys.upload_doc.repository.UtilisateurRepository;
 import fr.norsys.upload_doc.service.DocumentService;
+import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
@@ -39,7 +43,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-
+@AllArgsConstructor
 public class DocumentServiceImpl implements DocumentService {
 
     @Autowired
@@ -47,6 +51,7 @@ public class DocumentServiceImpl implements DocumentService {
     @Autowired
     private MetadataRepository metadataRepository;
 
+    private final UtilisateurRepository utilisateurRepository;
 
     private String uploadFile(File file, String fileName) throws IOException {
         String contentType = getContentType(fileName);
@@ -115,17 +120,23 @@ public class DocumentServiceImpl implements DocumentService {
             String URL = this.uploadFile(file, fileName);
             file.delete();
 
+            String email = documentSaveRequest.email();
+            Utilisateur utilisateur = Optional.of(utilisateurRepository.findByEmail(email)).orElseThrow(() -> new UserNotFoundException(email));
             Document document = new Document();
             document.setNom(documentSaveRequest.nom());
             document.setType(documentSaveRequest.type());
-            document.setDateCreation(documentSaveRequest.dateCreation());
+            document.setDateCreation(LocalDate.now());
             document.setEmplacement(URL);
             document.setHash(fileHash);
+            document.setUtilisateur(utilisateur);
 
             documentRepository.save(document);
 
-            Set<Metadata> metadataSet = createMetadataSet(documentSaveRequest.metadata(), document);
-            metadataRepository.saveAll(metadataSet);
+            if (documentSaveRequest.metadata() != null) {
+                Set<Metadata> metadataSet = createMetadataSet(documentSaveRequest.metadata(), document);
+                metadataRepository.saveAll(metadataSet);
+            }
+
             return ResponseEntity.status(HttpStatus.CREATED).body("Document saved successfully. URL: " + document.getEmplacement());
 
         } catch (Exception e) {

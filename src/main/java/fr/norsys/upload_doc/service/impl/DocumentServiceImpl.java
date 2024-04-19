@@ -4,24 +4,6 @@ package fr.norsys.upload_doc.service.impl;
 import com.google.auth.Credentials;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.storage.*;
-import com.sun.tools.jconsole.JConsoleContext;
-import fr.norsys.upload_doc.dto.DocumentSaveRequest;
-import fr.norsys.upload_doc.dto.DocumentSaveResponse;
-import fr.norsys.upload_doc.entity.Document;
-import fr.norsys.upload_doc.entity.Metadata;
-import fr.norsys.upload_doc.repository.DocumentRepository;
-
-import fr.norsys.upload_doc.service.DocumentService;
-import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.core.io.Resource;
-import org.springframework.http.*;
-
-import com.google.cloud.storage.BlobId;
-import com.google.cloud.storage.BlobInfo;
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageOptions;
 import fr.norsys.upload_doc.dto.DocumentDetailsResponse;
 import fr.norsys.upload_doc.dto.DocumentSaveRequest;
 import fr.norsys.upload_doc.dto.MetadataResponse;
@@ -32,10 +14,13 @@ import fr.norsys.upload_doc.repository.DocumentRepository;
 import fr.norsys.upload_doc.repository.MetadataRepository;
 import fr.norsys.upload_doc.service.DocumentService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
@@ -223,6 +208,7 @@ public class DocumentServiceImpl implements DocumentService {
 
         return new DocumentDetailsResponse(document.getId(), document.getNom(), document.getType(), document.getDateCreation(), metadataResponses);
     }
+
     private String extractFileNameFromUrl(String url) {
         try {
             URL parsedUrl = new URL(url);
@@ -233,6 +219,7 @@ public class DocumentServiceImpl implements DocumentService {
             return null;
         }
     }
+
     private String getFileExtension(String fileName) {
         int dotIndex = fileName.lastIndexOf('.');
         if (dotIndex == -1 || dotIndex == fileName.length() - 1) {
@@ -240,15 +227,16 @@ public class DocumentServiceImpl implements DocumentService {
         }
         return fileName.substring(dotIndex + 1);
     }
-    public ResponseEntity<Resource> downloadDocumentById( UUID id) throws IOException {
+
+    public ResponseEntity<Resource> downloadDocumentById(UUID id) throws IOException {
         Optional<Document> documentFounded = documentRepository.findById(id);
-        if(documentFounded.isPresent()){
-            Document document=documentFounded.get();
-            String documentUrl=document.getEmplacement();
+        if (documentFounded.isPresent()) {
+            Document document = documentFounded.get();
+            String documentUrl = document.getEmplacement();
             if (documentUrl != null && !documentUrl.isEmpty()) {
                 String extractedFileName = extractFileNameFromUrl(documentUrl);
                 String fileExtension = getFileExtension(extractedFileName);
-                System.out.println("file extention "+ fileExtension);
+                System.out.println("file extention " + fileExtension);
                 InputStream inputStream = getClass().getClassLoader().getResourceAsStream("uploaddoc-firebase-adminsdk.json");
                 GoogleCredentials credentials = GoogleCredentials.fromStream(inputStream);
 
@@ -273,23 +261,18 @@ public class DocumentServiceImpl implements DocumentService {
 
                 HttpHeaders headers = new HttpHeaders();
                 headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-              //  headers.setContentDispositionFormData("attachment", extractedFileName);
                 headers.setContentDispositionFormData("attachment", extractedFileName);
-                // Add file extension as a custom header
                 headers.add("File-Extension", fileExtension);
-                System.out.println("header"+headers);
-                return ResponseEntity.ok()
-                        .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + extractedFileName + "\"")
-                        .body(resource);
+
+                headers.add("Access-Control-Expose-Headers", "File-Extension, Content-Disposition, Content-Type");
+
+                return ResponseEntity.ok().headers(headers).body(resource);
+
             }
         }
         return null;
 
     }
-
-
-
 
 
 }

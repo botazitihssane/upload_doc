@@ -2,10 +2,8 @@ package fr.norsys.upload_doc.service;
 
 
 import fr.norsys.upload_doc.dto.DocumentDetailsResponse;
-import fr.norsys.upload_doc.entity.Document;
-import fr.norsys.upload_doc.entity.Metadata;
-import org.springframework.core.io.Resource;
 import fr.norsys.upload_doc.dto.DocumentSaveRequest;
+import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -20,10 +18,12 @@ public interface DocumentService {
 
     DocumentDetailsResponse getDocumentByID(UUID id);
 
-void deleteById(UUID id);
+    void deleteById(UUID id);
+
     public List<DocumentDetailsResponse> searchDocuments(String nom, String type, LocalDate date);
 
     public List<DocumentDetailsResponse> searchDocumentsByMetaData(Map<String, String> metadatas);
-    ResponseEntity<Resource> downloadDocumentById( UUID id) throws IOException;
+
+    ResponseEntity<Resource> downloadDocumentById(UUID id) throws IOException;
 
 }

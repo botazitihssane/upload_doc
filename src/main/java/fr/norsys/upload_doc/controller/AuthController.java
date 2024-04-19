@@ -5,6 +5,7 @@ import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.UserRecord;
 import fr.norsys.upload_doc.dto.SignInRequest;
 import fr.norsys.upload_doc.dto.SignUpRequest;
+import fr.norsys.upload_doc.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,18 +17,23 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     @Autowired
-    private FirebaseAuth firebaseAuth;
+    private AuthService authService;
 
     @PostMapping("/signup")
     public ResponseEntity<?> signUp(@RequestBody SignUpRequest signUpRequest) {
         try {
-            UserRecord.CreateRequest request = new UserRecord.CreateRequest()
-                    .setEmail(signUpRequest.getEmail())
-                    .setPassword(signUpRequest.getPassword());
-            UserRecord userRecord = FirebaseAuth.getInstance().createUser(request);
-            return ResponseEntity.ok("User registered successfully!");
+            String message = authService.signUpUser(signUpRequest);
+            return ResponseEntity.ok(message);
         } catch (FirebaseAuthException e) {
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        }
+    }
+    @PostMapping("/signin")
+    public String signInUser(@RequestBody SignInRequest signInRequest) {
+        try {
+            return authService.signInUser(signInRequest);
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
         }
     }
 

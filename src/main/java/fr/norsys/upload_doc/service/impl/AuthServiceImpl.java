@@ -7,6 +7,7 @@ import com.google.firebase.auth.UserRecord;
 import fr.norsys.upload_doc.dto.SignInRequest;
 import fr.norsys.upload_doc.dto.SignUpRequest;
 import fr.norsys.upload_doc.entity.Utilisateur;
+import fr.norsys.upload_doc.exception.UserNotFoundException;
 import fr.norsys.upload_doc.repository.UtilisateurRepository;
 import fr.norsys.upload_doc.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,29 +38,30 @@ public class AuthServiceImpl implements AuthService {
     }
     @Override
     public String signInUser(SignInRequest signInRequest) {
-        // Fetch user from database based on email
-        Utilisateur user = utilisateurRepository.findByEmail(signInRequest.getEmail());
-        if (user == null) {
-            return "User not found";
-        }
-
-        // Check if the password matches
-        if (!passwordEncoder.matches(signInRequest.getPassword(), user.getPassword())) {
-            return "Incorrect password";
-        }
-
-        // Authenticate with Firebase if needed
         try {
-            UserRecord userRecord = firebaseAuth.getUserByEmail(signInRequest.getEmail());
-            // Perform additional actions if needed
-        } catch (FirebaseAuthException e) {
-            // Handle authentication failure
-            return "Authentication failed";
-        }
 
-        // Authentication successful
-        return "User authenticated successfully!";
+            Utilisateur user = utilisateurRepository.findByEmail(signInRequest.getEmail());
+            if (user == null) {
+                throw new UserNotFoundException("User not found");
+            }
+
+
+            if (!passwordEncoder.matches(signInRequest.getPassword(), user.getPassword())) {
+                throw new Exception("Incorrect password");
+            }
+
+
+            UserRecord userRecord = firebaseAuth.getUserByEmail(signInRequest.getEmail());
+
+
+            return "User authenticated successfully!";
+        } catch (UserNotFoundException e) {
+            return e.getMessage();
+        } catch (Exception e) {
+            return e.getMessage();
+        }
     }
+
 
 
 

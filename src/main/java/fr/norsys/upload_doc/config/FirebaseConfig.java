@@ -17,17 +17,16 @@ public class FirebaseConfig {
 
     @Bean
     public FirebaseAuth firebaseAuth() throws IOException {
-        // Load Firebase credentials from JSON file
-        InputStream serviceAccount = new ClassPathResource("uploaddoc-firebase-adminsdk.json").getInputStream();
+          InputStream serviceAccount = new ClassPathResource("uploaddoc-firebase-adminsdk.json").getInputStream();
 
         FirebaseOptions options = new FirebaseOptions.Builder()
                 .setCredentials(GoogleCredentials.fromStream(serviceAccount))
                 .build();
 
-        // Initialize Firebase App with options
+
         FirebaseApp.initializeApp(options);
 
-        // Return FirebaseAuth instance
+
         return FirebaseAuth.getInstance();
     }
     @Bean

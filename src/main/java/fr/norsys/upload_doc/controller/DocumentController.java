@@ -1,11 +1,6 @@
 package fr.norsys.upload_doc.controller;
 
 
-import com.google.auth.oauth2.GoogleCredentials;
-import com.google.cloud.storage.Blob;
-import com.google.cloud.storage.BlobId;
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageOptions;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.norsys.upload_doc.dto.DocumentDetailsResponse;
@@ -14,24 +9,12 @@ import fr.norsys.upload_doc.exception.MetadataNotFoundException;
 import fr.norsys.upload_doc.service.DocumentService;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.core.io.Resource;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -102,8 +85,9 @@ public class DocumentController {
     public void delete(@PathVariable UUID id) {
         documentService.deleteById(id);
     }
+
     @GetMapping("/download/{id}")
-    public ResponseEntity<Resource> downloadDocumentById(@PathVariable UUID id) throws IOException {
+    public ResponseEntity<?> downloadDocumentById(@PathVariable UUID id) throws IOException {
         return documentService.downloadDocumentById(id);
     }
 

@@ -22,5 +22,6 @@ public class Utilisateur {
     private UUID id;
 
     private String email;
+    private String password;
 
 }

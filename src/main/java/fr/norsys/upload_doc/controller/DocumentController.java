@@ -68,14 +68,12 @@ public class DocumentController {
     }
 
     @GetMapping("/search/metadata")
-    public ResponseEntity<?> searchDocumentsByMetaData(@RequestParam(required = false) Map<String, String> metadata, @RequestParam("email") String email) {
+    public ResponseEntity<?> searchDocumentsByMetaData(@RequestParam(required = false) Map<String, String> metadata) {
         try {
-            List<DocumentDetailsResponse> response = documentService.searchDocumentsByMetaData(metadata, email);
+            List<DocumentDetailsResponse> response = documentService.searchDocumentsByMetaData(metadata);
             return ResponseEntity.ok(response);
         } catch (MetadataNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        } catch (UserNotFoundException e) {
-            throw new RuntimeException(e);
         }
 
     }

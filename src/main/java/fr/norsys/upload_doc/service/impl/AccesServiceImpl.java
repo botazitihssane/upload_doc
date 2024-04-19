@@ -1,14 +1,13 @@
 package fr.norsys.upload_doc.service.impl;
 
 import fr.norsys.upload_doc.dto.AccesRequest;
-import fr.norsys.upload_doc.entity.Acces;
-import fr.norsys.upload_doc.entity.Document;
-import fr.norsys.upload_doc.entity.Utilisateur;
+import fr.norsys.upload_doc.entity.*;
 import fr.norsys.upload_doc.enumeration.Droit;
 import fr.norsys.upload_doc.exception.AccesAlreadyExistException;
 import fr.norsys.upload_doc.exception.AccesNotFoundException;
 import fr.norsys.upload_doc.exception.DocumentNotFound;
 import fr.norsys.upload_doc.exception.UserNotFoundException;
+import fr.norsys.upload_doc.repository.AccesDroitsRepository;
 import fr.norsys.upload_doc.repository.AccesRepository;
 import fr.norsys.upload_doc.repository.DocumentRepository;
 import fr.norsys.upload_doc.repository.UtilisateurRepository;
@@ -16,7 +15,9 @@ import fr.norsys.upload_doc.service.AccesService;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 
 @Service
 @AllArgsConstructor
@@ -28,63 +29,55 @@ public class AccesServiceImpl implements AccesService {
 
     private final UtilisateurRepository utilisateurRepository;
 
+    private final AccesDroitsRepository accesDroitsRepository;
+
     @Override
     public void addAccesToUser(AccesRequest accesRequest) throws UserNotFoundException, DocumentNotFound, AccesAlreadyExistException {
         Utilisateur utilisateur = retrieveUtilisateur(accesRequest.email());
         Document document = retrieveDocument(accesRequest.docId());
 
+        Optional<Acces> existingAcces = accesRepository.findByIdDocumentAndIdUtilisateur(document, utilisateur);
+        if (existingAcces.isPresent()) {
+            throw new AccesAlreadyExistException();
+        }
+
+        Acces acces = new Acces();
+        acces.setIdDocument(document);
+        acces.setIdUtilisateur(utilisateur);
+        accesRepository.save(acces);
+
         Set<Droit> requestedDroits = accesRequest.droits();
+        System.out.println(requestedDroits);
 
-        Optional<List<Acces>> existingAccesOpt = accesRepository.findExistingAcces(document.getId(), utilisateur.getId(), requestedDroits);
-
-        if (existingAccesOpt.isPresent() && !existingAccesOpt.get().isEmpty()) {
-            List<Acces> accesList = existingAccesOpt.get();
-
-            for (Acces existingAcces : accesList) {
-                Set<Droit> existingDroits = existingAcces.getDroits();
-                Set<Droit> missingDroits = new HashSet<>(requestedDroits);
-                missingDroits.removeAll(existingDroits);
-
-                if (!missingDroits.isEmpty()) {
-                    existingAcces.getDroits().addAll(missingDroits);
-                    accesRepository.save(existingAcces);
-                }
-            }
-        } else {
-            Acces newAcces = new Acces();
-            newAcces.setIdDocument(document);
-            newAcces.setIdUtilisateur(utilisateur);
-            newAcces.setDroits(requestedDroits);
-            accesRepository.save(newAcces);
+        for (Droit droit : requestedDroits) {
+            AccesDroitsId accesDroitsId = new AccesDroitsId(acces.getId(), droit);
+            AccesDroits accesDroits = new AccesDroits(accesDroitsId, acces, utilisateur);
+            accesDroitsRepository.save(accesDroits);
         }
     }
+
 
     @Override
     public void revokeAcces(AccesRequest accesRequest) throws UserNotFoundException, DocumentNotFound, AccesNotFoundException {
         Utilisateur utilisateur = retrieveUtilisateur(accesRequest.email());
         Document document = retrieveDocument(accesRequest.docId());
 
-        Set<Droit> revokedDroits = accesRequest.droits();
+        Optional<Acces> existingAccesOpt = accesRepository.findByIdDocumentAndIdUtilisateur(document, utilisateur);
+        if (existingAccesOpt.isPresent()) {
+            Acces acces = existingAccesOpt.get();
+            Set<Droit> revokedDroits = accesRequest.droits();
 
-        Optional<List<Acces>> existingAccesOpt = accesRepository.findExistingAcces(document.getId(), utilisateur.getId(), revokedDroits);
-
-        if (existingAccesOpt.get().isEmpty()) throw new AccesNotFoundException();
-        else {
-            List<Acces> acces = existingAccesOpt.get();
-            boolean accessRemoved = false;
-
-            for (Acces existingAcces : acces) {
-                Set<Droit> existingDroits = existingAcces.getDroits();
-                existingDroits.removeAll(revokedDroits);
-
-                if (existingDroits.isEmpty()) {
-                    accesRepository.delete(existingAcces);
-                } else {
-                    accesRepository.save(existingAcces);
-                }
-                accessRemoved = true;
+            for (Droit droit : revokedDroits) {
+                AccesDroitsId accesDroitsId = new AccesDroitsId(acces.getId(), droit);
+                accesDroitsRepository.deleteById(accesDroitsId);
             }
 
+            long remainingDroitsCount = accesDroitsRepository.countByAccesId(acces.getId());
+            if (remainingDroitsCount == 0) {
+                accesRepository.delete(acces);
+            }
+        } else {
+            throw new AccesNotFoundException();
         }
     }
 

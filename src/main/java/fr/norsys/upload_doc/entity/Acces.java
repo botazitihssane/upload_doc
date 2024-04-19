@@ -1,6 +1,5 @@
 package fr.norsys.upload_doc.entity;
 
-import fr.norsys.upload_doc.enumeration.Droit;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -23,7 +22,7 @@ public class Acces {
     private Document idDocument;
     @ManyToOne
     private Utilisateur idUtilisateur;
-    @ElementCollection
-    @Enumerated(EnumType.STRING)
-    private Set<Droit> droits;
+
+    @OneToMany(mappedBy = "acces")
+    private Set<AccesDroits> accesDroits;
 }

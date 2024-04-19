@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.norsys.upload_doc.dto.DocumentDetailsResponse;
 import fr.norsys.upload_doc.dto.DocumentSaveRequest;
 import fr.norsys.upload_doc.exception.MetadataNotFoundException;
+import fr.norsys.upload_doc.exception.UserNotFoundException;
 import fr.norsys.upload_doc.service.DocumentService;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,23 +29,17 @@ public class DocumentController {
     private DocumentService documentService;
 
     @PostMapping("/save")
-    public ResponseEntity<?> saveDocument(@RequestParam("nom") String nom,
-                                          @RequestParam("type") String type,
-                                          @RequestParam(value = "metadata", required = false) String metadataJson,
-                                          @RequestParam("email") String email,
-                                          @RequestParam("file") MultipartFile multipartFile) {
+    public ResponseEntity<?> saveDocument(@RequestParam("nom") String nom, @RequestParam("type") String type, @RequestParam(value = "metadata", required = false) String metadataJson, @RequestParam("email") String email, @RequestParam("file") MultipartFile multipartFile) {
 
         Map<String, String> metadata = new HashMap<>();
 
         if (metadataJson != null && !metadataJson.isEmpty()) {
             ObjectMapper objectMapper = new ObjectMapper();
             try {
-                // Parse the JSON string to a map
                 metadata = objectMapper.readValue(metadataJson, new TypeReference<Map<String, String>>() {
                 });
             } catch (IOException e) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body("Invalid metadata JSON");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid metadata JSON");
             }
         }
 
@@ -67,18 +62,20 @@ public class DocumentController {
 
 
     @GetMapping("/search")
-    public ResponseEntity<List<DocumentDetailsResponse>> searchDocuments(@RequestParam(required = false, defaultValue = "") String nom, @RequestParam(required = false, defaultValue = "") String type, @RequestParam(required = false) LocalDate date) {
-        List<DocumentDetailsResponse> response = documentService.searchDocuments(nom, type, date);
+    public ResponseEntity<List<DocumentDetailsResponse>> searchDocuments(@RequestParam(required = false, defaultValue = "") String nom, @RequestParam(required = false, defaultValue = "") String type, @RequestParam(required = false) LocalDate date, @RequestParam(required = true) String email) throws UserNotFoundException {
+        List<DocumentDetailsResponse> response = documentService.searchDocuments(nom, type, date, email);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/search/metadata")
-    public ResponseEntity<?> searchDocumentsByMetaData(@RequestParam(required = false) Map<String, String> metadata) {
+    public ResponseEntity<?> searchDocumentsByMetaData(@RequestParam(required = false) Map<String, String> metadata, @RequestParam("email") String email) {
         try {
-            List<DocumentDetailsResponse> response = documentService.searchDocumentsByMetaData(metadata);
+            List<DocumentDetailsResponse> response = documentService.searchDocumentsByMetaData(metadata, email);
             return ResponseEntity.ok(response);
         } catch (MetadataNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (UserNotFoundException e) {
+            throw new RuntimeException(e);
         }
 
     }

@@ -10,6 +10,6 @@ import java.util.Map;
 public interface DocumentRepositoryCustom {
     List<Document> searchDocuments(String nom, String type, LocalDate dateCreation, Utilisateur utilisateur);
 
-    List<Document> searchDocumentsByMetaData(Map<String, String> metadatas, Utilisateur utilisateur);
+    List<Document> searchDocumentsByMetaData(Map<String, String> metadatas);
 
 }

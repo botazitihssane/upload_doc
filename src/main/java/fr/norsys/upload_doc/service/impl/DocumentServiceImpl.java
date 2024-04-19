@@ -195,21 +195,20 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     public List<DocumentDetailsResponse> searchDocuments(String nom, String type, LocalDate date, String email) throws UserNotFoundException {
-        Utilisateur utilisateur = Optional.of(utilisateurRepository.findByEmail(email)).orElseThrow(() -> new UserNotFoundException(email));
+        Utilisateur utilisateur = Optional.ofNullable(utilisateurRepository.findByEmail(email)).orElseThrow(() -> new UserNotFoundException(email));
         List<Document> documents = documentRepository.searchDocuments(nom, type, date, utilisateur);
         return documents.stream().map(this::mapToDTOResponse).collect(Collectors.toList());
     }
 
     @Override
-    public List<DocumentDetailsResponse> searchDocumentsByMetaData(Map<String, String> metadataFilters, String email) throws UserNotFoundException {
+    public List<DocumentDetailsResponse> searchDocumentsByMetaData(Map<String, String> metadataFilters) {
         for (String key : metadataFilters.keySet()) {
             boolean exists = metadataRepository.existsByCle(key);
             if (!exists) {
                 throw new MetadataNotFoundException(key);
             }
         }
-        Utilisateur utilisateur = Optional.of(utilisateurRepository.findByEmail(email)).orElseThrow(() -> new UserNotFoundException(email));
-        List<Document> documents = documentRepository.searchDocumentsByMetaData(metadataFilters, utilisateur);
+        List<Document> documents = documentRepository.searchDocumentsByMetaData(metadataFilters);
         List<DocumentDetailsResponse> documentDetailsResponses = documents.stream().map(this::mapToDTOResponse).collect(Collectors.toList());
         return documentDetailsResponses;
     }

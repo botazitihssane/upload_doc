@@ -23,7 +23,7 @@ public interface DocumentService {
 
     public List<DocumentDetailsResponse> searchDocuments(String nom, String type, LocalDate date,String email) throws UserNotFoundException;
 
-    public List<DocumentDetailsResponse> searchDocumentsByMetaData(Map<String, String> metadatas, String email) throws UserNotFoundException;
+    public List<DocumentDetailsResponse> searchDocumentsByMetaData(Map<String, String> metadatas);
 
     ResponseEntity<Resource> downloadDocumentById(UUID id) throws IOException;
 

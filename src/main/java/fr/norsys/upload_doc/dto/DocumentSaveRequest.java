@@ -8,6 +8,7 @@ import java.util.Map;
 public record DocumentSaveRequest(@RequestParam("nom") String nom,
                                   @RequestParam("type") String type,
                                   @RequestParam("dateCreation") LocalDate dateCreation,
+                                  @RequestParam("email") String email,
                                   @RequestParam("metadata") Map<String, String> metadata) {
 
 }

@@ -35,6 +35,7 @@ public class DocumentController {
                                           @RequestParam("type") String type,
                                           @RequestParam("dateCreation") LocalDate dateCreation,
                                           @RequestParam("metadata") String metadataJson,
+                                          @RequestParam("email") String email,
                                           @RequestParam("file") MultipartFile multipartFile) {
         ObjectMapper objectMapper = new ObjectMapper();
         Map<String, String> metadata;
@@ -46,7 +47,7 @@ public class DocumentController {
                     .body("Invalid metadata JSON");
         }
 
-        DocumentSaveRequest documentSaveRequest = new DocumentSaveRequest(nom, type, dateCreation, metadata);
+        DocumentSaveRequest documentSaveRequest = new DocumentSaveRequest(nom, type, dateCreation, email, metadata);
         return documentService.save(documentSaveRequest, multipartFile);
     }
 
